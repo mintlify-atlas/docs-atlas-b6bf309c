@@ -1,0 +1,93 @@
+---
+title: "Sentidos Café: PHP & MySQL Café Website"
+sidebarTitle: "Introduction"
+description: "Sentidos Café is a full-stack PHP/MySQL website for a coffee shop in Cusco, Peru, featuring WhatsApp ordering, reservations, and an interactive menu."
+---
+
+Sentidos Café is a production-quality web application built as a university project for **Universidad Tecnológica de los Andes** (Programación Web). It powers a real coffee shop located in the historic heart of Cusco, Peru — a city whose tagline the site proudly echoes: *"Despierta tus sentidos con nuestro aroma."* The project demonstrates full-stack PHP development from a structured MySQL schema and PDO-based backend through to a polished, mobile-responsive frontend built with vanilla JavaScript, CSS3, and Font Awesome icons.
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Server-side rendering | PHP 7.4+ with `require_once` includes |
+| Database access | MySQL 5.7+ via PDO (with `PDO::ERRMODE_EXCEPTION`) |
+| Styling | CSS3 — custom properties, Flexbox, responsive breakpoints |
+| Icons | Font Awesome 6.4.0 (CDN) |
+| Client-side logic | Vanilla JavaScript (ES6+) — no frameworks |
+| Maps | Google Maps Embed API (iframe) |
+| Messaging | WhatsApp Business API (`api.whatsapp.com/send`) |
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Interactive Menu" icon="utensils" href="/features/menu">
+    A full menu page at `menu/menu.php` with category navigation, item cards, and hover effects powered by `buscador.js`. Customers can browse coffees, pastries, and combo packages.
+  </Card>
+  <Card title="WhatsApp Ordering" icon="whatsapp" href="/features/ordering">
+    Every combo card and the fixed floating button trigger a pre-filled WhatsApp message to the café's Cusco number (`+51 937604465`), letting customers order in one tap.
+  </Card>
+  <Card title="Table Reservations" icon="calendar-check" href="/features/reservations">
+    A full CRUD reservation system under `reservas/` — customers submit their name, date, time, party size, and seating preference, stored in the `reservas` MySQL table.
+  </Card>
+  <Card title="Contact & Location" icon="map-location-dot" href="/features/contact">
+    An embedded Google Maps iframe pinpoints the café's exact coordinates (`-13.5269295, -71.9492471`) with a direct "Ver en Google Maps" button, plus email and social media links.
+  </Card>
+</CardGroup>
+
+## Database Overview
+
+The application uses a single database named `sentidos_cafe_db`, created and seeded by `script.sql`. It contains three tables:
+
+- **`pedidos`** — Stores customer orders: client name, phone, delivery address, product list, total amount (decimal), and timestamp.
+- **`reservas`** — Stores table reservations: first/last name, phone, reservation date and time, party size, and preferred seating zone (`zona_preferida`).
+- **`usuarios`** — Stores admin login credentials: username and hashed (or plain-text) password used by `Login/login.php`.
+
+```sql
+CREATE DATABASE IF NOT EXISTS sentidos_cafe_db;
+
+-- Orders placed via the menu or homepage combos
+CREATE TABLE IF NOT EXISTS pedidos (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    cliente     VARCHAR(100) NOT NULL,
+    telefono    VARCHAR(50)  NOT NULL,
+    direccion   VARCHAR(255) NOT NULL,
+    producto    TEXT         NOT NULL,
+    total       DECIMAL(10,2) NOT NULL,
+    fecha       DATETIME     NOT NULL
+);
+
+-- Table reservations
+CREATE TABLE IF NOT EXISTS reservas (
+    id_reserva        INT AUTO_INCREMENT PRIMARY KEY,
+    nombres           VARCHAR(100) NOT NULL,
+    apellidos         VARCHAR(100) NOT NULL,
+    telefono          VARCHAR(50)  NOT NULL,
+    fecha_reserva     DATE         NOT NULL,
+    hora_reserva      TIME         NOT NULL,
+    cantidad_personas INT          NOT NULL,
+    zona_preferida    VARCHAR(100) NOT NULL,
+    fecha_registro    DATETIME     DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Admin login
+CREATE TABLE IF NOT EXISTS usuarios (
+    id_usuario INT AUTO_INCREMENT PRIMARY KEY,
+    user       VARCHAR(50)  NOT NULL,
+    pass       VARCHAR(255) NOT NULL
+);
+```
+
+## Main Files at a Glance
+
+| File | Purpose |
+|---|---|
+| `index.php` | Homepage — header, nav, welcome section, Google Maps, combo gallery, contact footer |
+| `conexion.php` | Shared PDO connection, included via `require_once` in every PHP page |
+| `buscador.js` | All client-side logic: hover effects, WhatsApp messaging, AJAX registration, payroll calculator, category search |
+| `estilo.css` | Full stylesheet: resets, orange brand theme (`#f7941d`), responsive breakpoints |
+| `script.sql` | MySQL DDL — creates the database and all three tables, seeds the default admin user |
+
+<Note>
+  The database seed in `script.sql` inserts a default administrator account with the credentials **user: `admin`** / **password: `admin123`**. These are stored in plain text in the initial migration. You must update this record with a hashed password and a strong secret before deploying to any public server.
+</Note>

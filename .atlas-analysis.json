@@ -1,0 +1,78 @@
+{
+  "projectType": "saas",
+  "projectName": "Sentidos Café",
+  "projectDescription": "A full-stack PHP/MySQL website for Sentidos Café in Cusco, Peru — featuring an interactive menu, online reservations, WhatsApp ordering, and an admin panel for managing orders and users.",
+  "theme": "almond",
+  "primaryColor": "#f7941d",
+  "lightColor": "#fde8c8",
+  "darkColor": "#3e2723",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "project-structure"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/menu",
+              "features/ordering",
+              "features/reservations",
+              "features/contact"
+            ]
+          },
+          {
+            "group": "Backend & Database",
+            "pages": [
+              "backend/database-setup",
+              "backend/php-connection",
+              "backend/user-registration"
+            ]
+          },
+          {
+            "group": "Frontend",
+            "pages": [
+              "frontend/styling",
+              "frontend/javascript",
+              "frontend/whatsapp-integration"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/requirements",
+              "deployment/configuration",
+              "deployment/going-live"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Interactive café menu with combo ordering via WhatsApp",
+    "Table reservation system with date/time and party size",
+    "User registration form with AJAX and MySQL persistence",
+    "Google Maps integration showing café location in Cusco",
+    "Floating and inline WhatsApp chat buttons for instant contact",
+    "Payroll/tax calculator tool for staff management",
+    "Accordion gallery for featured food combos",
+    "Responsive design optimized for mobile and desktop"
+  ],
+  "publicApiSurface": [
+    "conexion.php — PDO MySQL connection setup",
+    "guardar_usuario.php — AJAX endpoint to save user registrations",
+    "script.sql — Database schema: pedidos, reservas, usuarios tables",
+    "buscador.js:saludar() — AJAX user registration handler",
+    "buscador.js:calcularYMostrar() — payroll tax calculator",
+    "buscador.js:abrirWhatsapp(producto) — WhatsApp order message builder",
+    "/movelo/menu/menu.php — Full menu page route"
+  ]
+}

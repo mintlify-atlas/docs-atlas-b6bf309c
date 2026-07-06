@@ -1,0 +1,153 @@
+---
+title: "Table Reservation System"
+sidebarTitle: "Reservations"
+description: "Sentidos Café stores table reservations in MySQL with guest name, phone, date, time, party size, and preferred seating zone."
+---
+
+Sentidos Café manages table bookings through a PHP/MySQL backend. Staff access a password-protected admin panel (`reservas/ver_reservas.php`) that lists every upcoming reservation and allows editing or deletion. New bookings are created through `reservas/guardar_reserva.php`, which validates the POST data with `mysqli_real_escape_string` before writing to the `sentidos_cafe_db` database.
+
+## Database: `sentidos_cafe_db`
+
+The application uses a single MySQL database named `sentidos_cafe_db`, created in `script.sql`:
+
+```sql
+CREATE DATABASE IF NOT EXISTS sentidos_cafe_db;
+USE sentidos_cafe_db;
+```
+
+The database connection is shared across the project via `conexion.php`, which uses PDO with `charset=utf8`:
+
+```php
+// conexion.php
+$conexion = new PDO(
+    "mysql:host=localhost;dbname=sentidos_cafe_db;charset=utf8",
+    "root",
+    ""
+);
+$conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+```
+
+## The `reservas` Table
+
+The reservation schema is defined in `script.sql`:
+
+```sql
+CREATE TABLE IF NOT EXISTS reservas (
+    id_reserva         INT AUTO_INCREMENT PRIMARY KEY,
+    nombres            VARCHAR(100) NOT NULL,
+    apellidos          VARCHAR(100) NOT NULL,
+    telefono           VARCHAR(50)  NOT NULL,
+    fecha_reserva      DATE         NOT NULL,
+    hora_reserva       TIME         NOT NULL,
+    cantidad_personas  INT          NOT NULL,
+    zona_preferida     VARCHAR(100) NOT NULL,
+    fecha_registro     DATETIME     DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Column Reference
+
+<ParamField path="id_reserva" type="INT AUTO_INCREMENT" required>
+  Primary key. Automatically assigned by MySQL on insert. Displayed as `#1`, `#2`, etc. in the admin panel table.
+</ParamField>
+
+<ParamField path="nombres" type="VARCHAR(100)" required>
+  Guest's first name(s). Maximum 100 characters. Displayed alongside `apellidos` in the admin view as a combined "Cliente" column.
+</ParamField>
+
+<ParamField path="apellidos" type="VARCHAR(100)" required>
+  Guest's family name(s). Maximum 100 characters.
+</ParamField>
+
+<ParamField path="telefono" type="VARCHAR(50)" required>
+  Contact phone number. Stored as a string to accommodate international formats, country codes, and separators (e.g. `+51 987 654 321`).
+</ParamField>
+
+<ParamField path="fecha_reserva" type="DATE" required>
+  Date of the reservation in `YYYY-MM-DD` format. The admin panel renders this with `date("d/m/Y", strtotime($fila['fecha_reserva']))` for local display.
+</ParamField>
+
+<ParamField path="hora_reserva" type="TIME" required>
+  Reservation time in `HH:MM:SS` format (24-hour). Displayed in the admin panel with a trailing `hs` suffix (e.g. `19:00:00 hs`).
+</ParamField>
+
+<ParamField path="cantidad_personas" type="INT" required>
+  Number of guests in the party. The booking form enforces a minimum of `1` via `min="1"` on the HTML input.
+</ParamField>
+
+<ParamField path="zona_preferida" type="VARCHAR(100)" required>
+  Preferred seating area. The booking form offers three options via a `<select>` dropdown:
+  - `Terraza / Aire Libre`
+  - `Salón Principal`
+  - `Zona VIP / Privada`
+</ParamField>
+
+<ParamField path="fecha_registro" type="DATETIME">
+  Timestamp of when the reservation row was inserted. Defaults to `CURRENT_TIMESTAMP` — no value needs to be supplied on insert.
+</ParamField>
+
+## The `pedidos` Table
+
+Completed orders from the menu panel are stored separately in the `pedidos` table, also defined in `script.sql`:
+
+```sql
+CREATE TABLE IF NOT EXISTS pedidos (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    cliente   VARCHAR(100)   NOT NULL,
+    telefono  VARCHAR(50)    NOT NULL,
+    direccion VARCHAR(255)   NOT NULL,
+    producto  TEXT           NOT NULL,
+    total     DECIMAL(10,2)  NOT NULL,
+    fecha     DATETIME       NOT NULL
+);
+```
+
+`pedidos.producto` is a `TEXT` column that stores a comma-separated list of ordered items (e.g. `2x Café Espresso, 1x Waffles`), built by `pedidos/guardar_pedidos.php` before the INSERT.
+
+## Creating a Reservation
+
+The admin booking form (`reservas/guardar_reserva.php`) submits via `POST` and runs the following INSERT:
+
+```sql
+INSERT INTO reservas
+    (nombres, apellidos, telefono, fecha_reserva, hora_reserva, cantidad_personas, zona_preferida)
+VALUES
+    ('María', 'González', '+51 987 654 321', '2026-02-14', '19:00:00', 2, 'Terraza / Aire Libre');
+```
+
+`fecha_registro` is omitted because it has a `DEFAULT CURRENT_TIMESTAMP` and MySQL fills it in automatically.
+
+### Full Admin Workflow
+
+<Steps>
+  <Step title="Log in to the admin panel">
+    Navigate to `Login/login.php` and authenticate with admin credentials stored in the `usuarios` table. The session is started with `session_start()` and a `$_SESSION['usuario_admin']` flag is set on success.
+  </Step>
+  <Step title="Open the reservations panel">
+    Go to `reservas/ver_reservas.php`. The page fetches all rows ordered by `id_reserva DESC` so the newest reservation appears at the top.
+
+    ```php
+    $sql = "SELECT * FROM reservas ORDER BY id_reserva DESC";
+    $resultado = mysqli_query($conexion, $sql);
+    ```
+  </Step>
+  <Step title="Add a new reservation">
+    Click **Añadir Nueva Reserva** to open `guardar_reserva.php`. Fill in all required fields and click **Guardar Reserva**. On success, the page redirects back to `ver_reservas.php`.
+  </Step>
+  <Step title="Edit or delete a reservation">
+    Each row in the admin table has an edit icon linking to `editar_reserva.php?id=X` and a delete icon linking to `eliminar_reserva.php?id=X` (with a JavaScript `confirm()` dialog before deletion).
+  </Step>
+</Steps>
+
+<Tip>
+  The current schema has no uniqueness constraint on `(fecha_reserva, hora_reserva, zona_preferida)`, which means double-booking the same zone and time slot is possible. Consider adding an availability check before the INSERT to prevent conflicts:
+
+  ```sql
+  SELECT COUNT(*) FROM reservas
+  WHERE fecha_reserva = '2026-02-14'
+    AND hora_reserva  = '19:00:00'
+    AND zona_preferida = 'Terraza / Aire Libre';
+  ```
+
+  If the count is greater than zero, display a "zone already booked" message to the staff member instead of inserting.
+</Tip>

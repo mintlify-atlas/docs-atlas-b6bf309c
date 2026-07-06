@@ -1,0 +1,138 @@
+---
+title: "Contact, Location & Social Media"
+sidebarTitle: "Contact"
+description: "Sentidos Café displays its Cusco location via Google Maps embed and provides email, phone, and social media links for customer outreach."
+---
+
+The contact and location section sits at the bottom of `index.php` inside two distinct blocks: a white `.caja-especialidad-ancha` container that holds the interactive Google Maps embed, and a dark-brown `#seccion-contacto` div that groups the café's email, phone, and social media links. Both sections are reachable directly from the navigation bar.
+
+## Google Maps Embed
+
+The café's coordinates in Cusco's historic centre are **`-13.5269295, -71.9492471`**. The map is rendered with a standard `<iframe>` embed that fills the `.caja-mapa` container, which constrains it to `300px` tall with `border-radius: 12px` and `overflow: hidden` so the map respects the rounded corners.
+
+```html
+<!-- index.php — inside .caja-mapa -->
+<iframe
+    src="https://www.google.com/maps/embed?pb=!1m10!1m8!1m3!1d969.78528150887!2d-71.9492471!3d-13.5269295!3m2!1i1024!2i768!4f13.1!5e0!3m2!1ses-419!2spe!4v1719888888888!5m2!1ses-419!2spe"
+    width="100%"
+    height="100%"
+    style="border:0;"
+    allowfullscreen=""
+    loading="lazy"
+    referrerpolicy="strict-origin-when-cross-origin">
+</iframe>
+```
+
+Below the map, a `.btn-google-maps` anchor opens the same location directly in Google Maps:
+
+```html
+<a href="https://www.google.com/maps?q=-13.5269295,-71.9492471"
+   target="_blank"
+   class="btn-google-maps">
+    <i class="fa-solid fa-map-location-dot"></i> Ver en Google Maps
+</a>
+```
+
+### Updating the Location
+
+<Steps>
+  <Step title="Get a new embed URL from Google Maps">
+    Go to [maps.google.com](https://maps.google.com), search for or navigate to your new location, click **Share**, choose the **Embed a map** tab, and copy the full `<iframe>` tag. The `src` attribute is what you need.
+  </Step>
+  <Step title="Replace the iframe src in index.php">
+    Find the `<iframe>` inside `.caja-mapa` and swap in the new `src` URL:
+
+    ```html
+    <iframe
+        src="YOUR_NEW_GOOGLE_MAPS_EMBED_URL"
+        width="100%"
+        height="100%"
+        style="border:0;"
+        allowfullscreen=""
+        loading="lazy"
+        referrerpolicy="strict-origin-when-cross-origin">
+    </iframe>
+    ```
+  </Step>
+  <Step title="Update the external link button">
+    Change the `href` on `.btn-google-maps` to point to the new coordinates:
+
+    ```html
+    <a href="https://www.google.com/maps?q=LAT,LNG"
+       target="_blank"
+       class="btn-google-maps">
+        <i class="fa-solid fa-map-location-dot"></i> Ver en Google Maps
+    </a>
+    ```
+
+    Replace `LAT,LNG` with the new decimal coordinates (e.g. `-13.5120,-72.0012`).
+  </Step>
+</Steps>
+
+## Contact Details
+
+The `#seccion-contacto` block in `index.php` displays the café's direct contact information:
+
+| Channel | Value |
+|---------|-------|
+| Email   | `informes@sentidoscafe.com` |
+| Phone   | `+51 984 XXXXXX` |
+
+```html
+<!-- index.php — inside #seccion-contacto -->
+<p>
+    <i class="fa-solid fa-envelope"></i> Email: informes@sentidoscafe.com
+    |
+    <i class="fa-solid fa-phone"></i> Teléfono: +51 984 XXXXXX
+</p>
+```
+
+<Note>
+  The phone number shown in the contact block (`+51 984 XXXXXX`) is currently a placeholder. Update it in `index.php` once the café's definitive phone line is confirmed. Note that the **WhatsApp ordering** number is configured separately — as `const numeroTelefono = "937604465"` in `buscador.js` — and must be updated independently.
+</Note>
+
+## Social Media Links
+
+Three social media icons are displayed inside `.redes-sociales` in the `#seccion-contacto` block. All three `href` values are currently placeholder URLs that must be replaced with the real profile addresses before launch.
+
+```html
+<!-- index.php — inside #seccion-contacto .redes-sociales -->
+<a href="https://www.facebook.com/TU_PAGINA"  target="_blank">
+    <i class="fa-brands fa-facebook"></i>
+</a>
+<a href="https://www.instagram.com/TU_PERFIL" target="_blank">
+    <i class="fa-brands fa-instagram"></i>
+</a>
+<a href="https://www.tiktok.com/@TU_USUARIO"  target="_blank">
+    <i class="fa-brands fa-tiktok"></i>
+</a>
+```
+
+Replace `TU_PAGINA`, `TU_PERFIL`, and `TU_USUARIO` with the café's real handles. `estilo.css` already provides branded hover effects — Facebook turns blue, Instagram renders a gradient, and TikTok gets a neon drop-shadow — so no CSS changes are needed after updating the links.
+
+## Anchor Navigation & Smooth Scrolling
+
+The nav bar includes a direct anchor link to the contact section:
+
+```html
+<!-- index.php — inside <nav> -->
+<li>
+    <a href="#seccion-contacto">
+        <i class="fa-solid fa-envelope"></i> Contacto
+    </a>
+</li>
+```
+
+Clicking this link scrolls the page smoothly down to the `#seccion-contacto` element without a hard jump.
+
+<Note>
+  Smooth scrolling is enabled globally in `estilo.css` with a single CSS rule applied to every element on the page:
+
+  ```css
+  * {
+      scroll-behavior: smooth;
+  }
+  ```
+
+  This means any `href="#anchor"` link anywhere on the site will automatically animate — no JavaScript scroll library is required.
+</Note>

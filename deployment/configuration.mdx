@@ -1,0 +1,97 @@
+---
+title: "Configuring Sentidos Café for Production"
+sidebarTitle: "Configuration"
+description: "Update database credentials, secure the admin account, configure environment variables, and prepare sentidos_cafe_db for a live production deployment."
+---
+
+The default configuration that ships with Sentidos Café is designed for local development using XAMPP or a similar stack. Before pointing a real domain at the application you must harden the database credentials, replace every placeholder value, and update the admin password. This page walks through each required change.
+
+## Database Credentials — `conexion.php`
+
+All database interactions in the project flow through a single connection file at the project root. Its default contents are:
+
+```php
+$host = "localhost";           // DB host — often 'localhost' on shared hosts
+$db_name = "sentidos_cafe_db"; // Your database name
+$username = "root";            // ⚠️ Change this for production!
+$password = "";                // ⚠️ Set a strong password!
+
+try {
+    $conexion = new PDO(
+        "mysql:host=$host;dbname=$db_name;charset=utf8",
+        $username,
+        $password
+    );
+    $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $error) {
+    die("Error de conexión: " . $error->getMessage());
+}
+```
+
+<Warning>
+  The default admin password stored in `script.sql` is `admin123` — a plaintext value inserted directly into the `usuarios` table. This password **must be changed** before the site is publicly accessible. Any visitor who discovers the login panel at `Login/login.php` could gain full access to order records, customer data, and table reservations.
+</Warning>
+
+## Production Checklist
+
+Work through every item below before launching:
+
+- [ ] Change `$username` from `root` to a dedicated MySQL user with limited privileges
+- [ ] Set a strong `$password` (minimum 16 characters, mixed case + symbols)
+- [ ] Update the default admin password in the `usuarios` table (replace `admin123`)
+- [ ] Replace placeholder social media URLs in `index.php` (`TU_PAGINA`, `TU_PERFIL`, `TU_USUARIO`)
+- [ ] Update the phone number in `buscador.js` (`const numeroTelefono`) to the real business WhatsApp number
+- [ ] Replace the placeholder contact info in `index.php` (`informes@sentidoscafe.com`, `+51 984 XXXXXX`)
+- [ ] Update the hardcoded business number in `pedidos/guardar_pedidos.php` (`$numero_comercio = "51987654321"`) to the real WhatsApp number
+- [ ] Verify or update the `/movelo/menu/menu.php` path in `index.php` navigation links if the menu lives at a different URL on your host
+
+## Environment Variables (Recommended for Production)
+
+Hard-coding credentials in `conexion.php` means they will be committed to version control and visible to anyone with file-system access. A safer pattern reads the values from server environment variables and falls back to the development defaults only when the variable is absent:
+
+```php
+// In conexion.php
+$host     = getenv('DB_HOST') ?: 'localhost';
+$db_name  = getenv('DB_NAME') ?: 'sentidos_cafe_db';
+$username = getenv('DB_USER') ?: 'root';
+$password = getenv('DB_PASS') ?: '';
+```
+
+Set the variables in your hosting control panel, in a `.env` file processed by your server's virtual-host configuration, or in Apache's `SetEnv` directive:
+
+```bash
+# Apache VirtualHost or .htaccess
+SetEnv DB_HOST     127.0.0.1
+SetEnv DB_NAME     sentidos_cafe_db
+SetEnv DB_USER     sentidos_user
+SetEnv DB_PASS     StrongPassword123!
+```
+
+## Creating a Dedicated MySQL User
+
+Running the application as `root` grants it unlimited database access — a single SQL injection vulnerability would expose every table on the server. Create a least-privilege user instead:
+
+```sql
+CREATE USER 'sentidos_user'@'localhost' IDENTIFIED BY 'StrongPassword123!';
+GRANT SELECT, INSERT, UPDATE, DELETE ON sentidos_cafe_db.* TO 'sentidos_user'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+This user can read and write only inside `sentidos_cafe_db` and cannot drop tables, create new databases, or affect other applications on the same server.
+
+## Changing the Admin Password
+
+The default `admin123` password is stored as plaintext in the `usuarios` table. Replace it with a SHA-256 hash using phpMyAdmin's SQL tab or the `mysql` CLI:
+
+```sql
+-- Run in phpMyAdmin or mysql CLI
+UPDATE usuarios
+SET pass = SHA2('your-new-password', 256)
+WHERE user = 'admin';
+```
+
+After this change, the login form at `Login/login.php` will hash the submitted password before comparing it, so the new value must also use `SHA2` to match. If the current `login.php` compares passwords in plaintext (as the shipped version does), update the comparison logic to use `SHA2` on the input before the query — or migrate to PHP's `password_hash` / `password_verify` functions for a more robust solution.
+
+<Note>
+  All product images in the current build point to external sources — Unsplash and a few other third-party CDNs. If those URLs become unavailable or are rate-limited, product cards and hover effects will break silently. For reliable production performance, download each image referenced in `buscador.js` and `menu/menu.php`, upload them to your server, and update the `src` attributes to use local relative paths.
+</Note>

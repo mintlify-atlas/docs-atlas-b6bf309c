@@ -1,47 +1,149 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Sentidos Café Locally"
+sidebarTitle: "Quickstart"
+description: "Set up and run the Sentidos Café PHP website on your local machine using XAMPP or WAMP in under 10 minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+Sentidos Café runs on a standard PHP + Apache + MySQL stack, which means you can have a fully working local copy running in under ten minutes using XAMPP or WAMP. No Composer dependencies, no build steps — just copy the files, import the schema, and open your browser.
 
 ## Prerequisites
 
-Before you begin, you must have:
+Before you begin, make sure you have the following available:
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+- **PHP 7.4 or higher** — required for PDO named exceptions and `str_contains` usage
+- **MySQL 5.7 or higher** — the schema uses `DECIMAL(10,2)`, `DEFAULT CURRENT_TIMESTAMP`, and `ON DUPLICATE KEY UPDATE`
+- **Apache** — the project uses standard `require_once` includes with relative paths; no `.htaccess` rewrite rules required
+- **phpMyAdmin** (optional but recommended) — bundled with both XAMPP and WAMP; makes importing `script.sql` one click
 
-## Get started
+<Tip>
+  **XAMPP** (Windows/macOS/Linux) and **WAMP** (Windows) are the fastest ways to get all three services — Apache, MySQL, and phpMyAdmin — running together with a single installer. Download XAMPP at [apachefriends.org](https://www.apachefriends.org) or WAMP at [wampserver.com](https://www.wampserver.com).
+</Tip>
+
+## Setup Steps
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Install XAMPP or WAMP and start services">
+    After installing your preferred stack, open the **XAMPP Control Panel** (or the WAMP tray icon) and start both the **Apache** and **MySQL** services. Both indicators should turn green before you proceed.
+
+    Confirm Apache is running by visiting `http://localhost` — you should see the XAMPP or WAMP welcome page.
+  </Step>
+
+  <Step title="Copy the project files into your web root">
+    Clone or download the repository, then place the entire project folder inside your web root:
 
     ```bash
-    npm install your-package
+    # XAMPP (Windows default)
+    C:\xampp\htdocs\sentidos-cafe\
+
+    # XAMPP (macOS default)
+    /Applications/XAMPP/htdocs/sentidos-cafe/
+
+    # WAMP (Windows default)
+    C:\wamp64\www\sentidos-cafe\
+    ```
+
+    After copying, your web root should look like this:
+
+    ```
+    sentidos-cafe/
+    ├── index.php
+    ├── conexion.php
+    ├── buscador.js
+    ├── estilo.css
+    ├── script.sql
+    ├── logo.jpg
+    ├── plaza.png
+    ├── menu/
+    ├── pedidos/
+    ├── reservas/
+    └── Login/
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+
+  <Step title="Create the database and import the schema">
+    1. Open **phpMyAdmin** at `http://localhost/phpmyadmin`
+    2. Click **New** in the left sidebar
+    3. Enter the database name: `sentidos_cafe_db` and click **Create**
+    4. Select the new database, then click the **Import** tab
+    5. Click **Choose File**, select `script.sql` from your project folder, and click **Go**
+
+    phpMyAdmin will create all three tables (`pedidos`, `reservas`, `usuarios`) and insert the default admin user automatically.
+
+    Alternatively, run the schema directly from the MySQL command line:
 
     ```bash
-    your-cli init
+    mysql -u root -p < C:\xampp\htdocs\sentidos-cafe\script.sql
     ```
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
 
-    ```bash
-    your-cli start
+  <Step title="Verify the database credentials in conexion.php">
+    Open `conexion.php` in a text editor and confirm the four connection variables match your local MySQL setup. XAMPP and WAMP both use `root` with an **empty password** by default:
+
+    ```php
+    $host = "localhost";
+    $db_name = "sentidos_cafe_db";
+    $username = "root";
+    $password = ""; // If you set a password in MySQL Workbench, enter it here
+
+    try {
+        $conexion = new PDO("mysql:host=$host;dbname=$db_name;charset=utf8", $username, $password);
+        $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    } catch(PDOException $error) {
+        die("Error de conexión: " . $error->getMessage());
+    }
     ```
+
+    If you set a custom MySQL root password during installation, enter it between the quotes on the `$password` line. Every PHP page in the project pulls this file in via `require_once 'conexion.php'`, so you only need to change it in one place.
+
+    <Warning>
+      The default `root` user with an empty password is suitable **only for local development**. Never deploy `conexion.php` with these credentials to a public or production server. Always create a dedicated MySQL user with a strong password and the minimum required privileges before going live.
+    </Warning>
+  </Step>
+
+  <Step title="Open the site in your browser">
+    Navigate to:
+
+    ```
+    http://localhost/sentidos-cafe/index.php
+    ```
+
+    You should see the full Sentidos Café homepage — the orange header with the circular logo, the navigation bar, the welcome section with the coffee cup image, the Google Maps embed showing the Cusco location, the four combo cards with WhatsApp order buttons, and the contact footer.
+
+    To access the admin login, go to:
+
+    ```
+    http://localhost/sentidos-cafe/Login/login.php
+    ```
+
+    Log in with the seeded credentials: **user `admin`** / **password `admin123`**.
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## Troubleshooting
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+**"Error de conexión" on page load**
+
+This error is thrown directly by the `catch(PDOException $error)` block in `conexion.php`. The most common causes are:
+
+- MySQL is not running — go back to the XAMPP/WAMP control panel and start the MySQL service
+- Wrong password in `$password` — check whether you set a root password during MySQL installation
+- The database doesn't exist yet — make sure you completed Step 3 and the `sentidos_cafe_db` database appears in phpMyAdmin
+
+**Blank white page with no output**
+
+PHP is likely encountering a fatal error but suppressing output. Enable error display temporarily by adding these two lines to the very top of `index.php` (remove them before any deployment):
+
+```php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+```
+
+Then reload the page to see the exact error message. You can also check the Apache error log at `C:\xampp\apache\logs\error.log` (XAMPP Windows) or `/Applications/XAMPP/logs/error_log` (XAMPP macOS).
+
+**WhatsApp buttons open but send to the wrong number**
+
+The WhatsApp phone number is hardcoded in `buscador.js` as `937604465` (Peru). If you are testing with a different number, find the `numeroTelefono` constant near the top of `buscador.js` and update it:
+
+```js
+const numeroTelefono = "937604465"; // Replace with your number (no + or spaces)
+```

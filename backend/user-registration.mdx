@@ -1,0 +1,180 @@
+---
+title: "AJAX User Registration with PHP and MySQL"
+sidebarTitle: "User Registration"
+description: "The Sentidos Café registration form collects visitor details via AJAX, POSTs to guardar_usuario.php, and saves records to the MySQL usuarios table."
+---
+
+The Sentidos Café homepage includes a visitor registration form that lets guests sign in without a full page reload. When a user submits their details, the `saludar()` function in `buscador.js` takes over: it validates the inputs in the browser, packages the data into a `FormData` object, and sends it to `guardar_usuario.php` via the Fetch API. The server processes the insert and echoes back the plain string `EXITO` on success, which the JavaScript uses to swap the form area for a confirmation message — all without interrupting the browsing experience.
+
+## End-to-End Registration Flow
+
+<Steps>
+  <Step title="User fills in the form">
+    The registration section collects four fields:
+    - **Nombres** (`#reg-nombres`) — first name, required
+    - **Apellidos** (`#reg-apellidos`) — last name, required
+    - **Edad** (`#reg-edad`) — age, required
+    - **Género** (`#reg-genero`) — optional; defaults to `"No especificado"` if left blank
+  </Step>
+  <Step title="saludar() fires on submit">
+    Clicking the submit button calls `saludar()` from `buscador.js`. The function reads and trims each field value, then runs a client-side validation check. If `nombres`, `apellidos`, or `edad` are empty, an `alert()` stops submission early. A temporary `"⏳ Conectando con MySQL..."` message is shown inside the `#bloqueResultadoSaludo` container while the request is in flight.
+  </Step>
+  <Step title="Fetch POST to guardar_usuario.php">
+    The four values are appended to a `FormData` instance and sent as a `POST` request to `guardar_usuario.php` using the browser's native `fetch()` API. No page reload occurs.
+  </Step>
+  <Step title="Server inserts the row">
+    `guardar_usuario.php` includes `conexion.php`, validates the incoming POST fields, and executes a parameterized `INSERT` using PDO prepared statements. On success it outputs the plain string `EXITO` with no surrounding HTML.
+  </Step>
+  <Step title="JS renders feedback">
+    The `.then(resultado => ...)` callback inspects the trimmed response text. If it equals `"EXITO"`, the `#bloqueResultadoSaludo` div is replaced with a success card showing the guest's full name and a green `"✓ Guardado en MySQL"` confirmation. All four form inputs are cleared for the next visitor. Any other response string is treated as an error and displayed in red.
+  </Step>
+</Steps>
+
+## The saludar() Function
+
+This is the complete AJAX registration handler from `buscador.js`:
+
+```js
+function saludar() {
+    const nombres = document.getElementById('reg-nombres').value.trim();
+    const apellidos = document.getElementById('reg-apellidos').value.trim();
+    const edad = document.getElementById('reg-edad').value.trim();
+    let genero = document.getElementById('reg-genero').value.trim();
+
+    if (nombres === "" || apellidos === "" || edad === "") {
+        alert("Por favor, completa los campos obligatorios (Nombres, Apellidos y Edad).");
+        return;
+    }
+
+    if (genero === "") {
+        genero = "No especificado";
+    }
+
+    const datosFormulario = new FormData();
+    datosFormulario.append('nombres', nombres);
+    datosFormulario.append('apellidos', apellidos);
+    datosFormulario.append('edad', edad);
+    datosFormulario.append('genero', genero);
+
+    fetch('guardar_usuario.php', {
+        method: 'POST',
+        body: datosFormulario
+    })
+    .then(response => response.text())
+    .then(resultado => {
+        if (resultado.trim() === "EXITO") {
+            // Show success message
+        } else {
+            // Show error message
+        }
+    })
+    .catch(error => {
+        console.error("Fallo en Fetch: ", error);
+    });
+}
+```
+
+<Note>
+`FormData` automatically sets the `Content-Type` header to `multipart/form-data` with the correct boundary, so no manual headers need to be added to the `fetch()` call. PHP reads the values from `$_POST` as usual.
+</Note>
+
+## The guardar_usuario.php Endpoint
+
+`guardar_usuario.php` must live in the same directory as `conexion.php` and `index.php`. It accepts POST fields `nombres`, `apellidos`, `edad`, and `genero`, and returns only the bare string `EXITO` (no HTML, no whitespace before `<?php`) on a successful database insert.
+
+<Warning>
+Using PDO named placeholders (`:nombres`, `:apellidos`, etc.) is **required** here. Never concatenate `$_POST` values directly into a SQL string — that is the exact pattern that makes an application vulnerable to SQL injection. The prepared statement approach shown below ensures user input is always treated as data, never as executable SQL.
+</Warning>
+
+```php
+<?php
+require_once 'conexion.php';
+
+$nombres  = $_POST['nombres'] ?? '';
+$apellidos = $_POST['apellidos'] ?? '';
+$edad     = (int)($_POST['edad'] ?? 0);
+$genero   = $_POST['genero'] ?? 'No especificado';
+
+if (empty($nombres) || empty($apellidos) || $edad <= 0) {
+    echo "ERROR: Datos incompletos.";
+    exit;
+}
+
+try {
+    $stmt = $conexion->prepare(
+        "INSERT INTO visitantes (nombres, apellidos, edad, genero, fecha_registro)
+         VALUES (:nombres, :apellidos, :edad, :genero, NOW())"
+    );
+    $stmt->execute([
+        ':nombres'   => $nombres,
+        ':apellidos' => $apellidos,
+        ':edad'      => $edad,
+        ':genero'    => $genero
+    ]);
+    echo "EXITO";
+} catch (PDOException $e) {
+    echo "ERROR: " . $e->getMessage();
+}
+```
+
+### POST Fields Reference
+
+| Field | PHP Variable | Type | Notes |
+|---|---|---|---|
+| `nombres` | `$nombres` | string | Required; empty string fails server-side check |
+| `apellidos` | `$apellidos` | string | Required; empty string fails server-side check |
+| `edad` | `$edad` | int | Cast with `(int)` — must be greater than 0 |
+| `genero` | `$genero` | string | Optional; defaults to `"No especificado"` |
+
+### Response Strings
+
+| Response | Meaning |
+|---|---|
+| `EXITO` | Row inserted successfully |
+| `ERROR: Datos incompletos.` | Server-side validation failed |
+| `ERROR: <PDOException message>` | Database query failed |
+
+## Payroll Calculator (calcularYMostrar)
+
+`buscador.js` also contains a staff payroll utility used by café management to estimate income tax withholding. It reads an employee name and gross salary from the page, applies Peruvian tax brackets, and populates a results table — all client-side with no server round-trip.
+
+<Note>
+All monetary amounts in this calculator are in **Peruvian Sol (S/)**, the official currency of Peru. The tax brackets are simplified estimates and should be validated against current SUNAT regulations before use in official payroll processing.
+</Note>
+
+### Tax Brackets
+
+| Gross Salary Range | Withholding Rate | Status |
+|---|---|---|
+| S/ 0 – S/ 1,500 | 0% | Exonerado (exempt) |
+| S/ 1,500.01 – S/ 3,000 | 8% | Sujeto a Retención |
+| Over S/ 3,000 | 14% | Sujeto a Retención |
+
+### Implementation
+
+```js
+function calcularYMostrar() {
+    const sueldoBruto = parseFloat(document.getElementById("sueldo").value);
+    let porcentaje = 0;
+    if (sueldoBruto > 1500 && sueldoBruto <= 3000) porcentaje = 8;
+    else if (sueldoBruto > 3000) porcentaje = 14;
+
+    const montoImpuesto = (sueldoBruto * porcentaje) / 100;
+    const sueldoNeto = sueldoBruto - montoImpuesto;
+}
+```
+
+The full function also reads the employee name from `#nombre`, computes `estado` (`"Exonerado"` or `"Sujeto a Retención"`), and writes all five output values to their respective `#out*` elements before revealing the results table with `tabla.style.display = "table"`.
+
+### Example Calculation
+
+For an employee with a gross salary of **S/ 2,200**:
+
+- Tax bracket: S/ 1,500 – S/ 3,000 → **8%**
+- Tax amount: `2200 × 0.08` = **S/ 176.00**
+- Net salary: `2200 − 176` = **S/ 2,024.00**
+- Status: **Sujeto a Retención**
+
+<Tip>
+The calculator outputs are rendered in the browser only — nothing is sent to the server or saved to the database. To persist payroll records, you would need a dedicated PHP endpoint and a `planilla` table in `sentidos_cafe_db`.
+</Tip>

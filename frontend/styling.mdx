@@ -1,0 +1,276 @@
+---
+title: "CSS Styling System & Brand Theme"
+sidebarTitle: "Styling"
+description: "Sentidos Café uses a warm orange-and-brown brand palette in pure CSS. This page covers layout containers, the navigation bar, card components, and responsive breakpoints."
+---
+
+Sentidos Café's visual identity is defined entirely in `estilo.css` — a single, self-contained stylesheet that applies a warm café aesthetic through a rich orange-and-brown palette, rounded white cards, and a dark outer shell. No CSS framework is used; every rule is handcrafted to match the brand.
+
+## Brand Color Palette
+
+The four core colors appear repeatedly across `estilo.css` and establish an instantly recognisable identity for the shop.
+
+| Token | Hex | Used For |
+|---|---|---|
+| Primary orange | `#f7941d` | `.caja-estilo` (header & nav), CTA headings, section heading accents |
+| Dark brown | `#3e2723` | Contact section background, logo border, nav hover color, footer text |
+| Warm amber | `#c67a25` | Section headings (`.titulo-mapa`, `.bloque-llamado-accion h2`), map title |
+| Off-white | `#d9e1e8` | `.contenedor-principal` background (the main page card) |
+| Dark outer | `#0b0b0b` | `body` background — creates the dark frame around the page |
+
+To make future rebranding easier, consider consolidating these values into CSS custom properties at the top of `estilo.css`:
+
+```css
+:root {
+    --color-primary: #f7941d;
+    --color-dark: #3e2723;
+    --color-amber: #c67a25;
+}
+```
+
+Once declared, every rule that currently hardcodes `#f7941d` can be replaced with `var(--color-primary)`, and a single-line change updates the entire site.
+
+## Main Layout Container
+
+The entire page is wrapped in `.contenedor-principal`, which centers all content in a rounded card floating against the dark body background.
+
+```css
+.contenedor-principal {
+    background-color: #d9e1e8;
+    width: 100%;
+    max-width: 850px;
+    padding: 20px;
+    border-radius: 25px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+```
+
+The `body` uses `display: flex` with `justify-content: center` so the container is always horizontally centered regardless of viewport width. The `min-height: 100vh` rule ensures the dark background always fills the full screen.
+
+## Key CSS Classes
+
+### `.caja-estilo` — Orange Header & Nav Box
+
+Used for both the `<header>` and the `<nav>` elements, this class gives them the primary orange treatment:
+
+```css
+.caja-estilo {
+    background-color: #f7941d;
+    border: 2px solid #d35400;
+    border-radius: 15px;
+    margin-bottom: 15px;
+}
+```
+
+The `#d35400` border is a deeper burnt-orange that defines the edge of the box and separates it from the off-white container background.
+
+### `.caja-bienvenida-ancha` — Welcome Panel
+
+A horizontal flexbox row that holds the left action card and the right dashed placeholder side-by-side:
+
+```css
+.caja-bienvenida-ancha {
+    display: flex;
+    align-items: stretch;
+    gap: 15px;
+    margin-bottom: 15px;
+    width: 100%;
+}
+```
+
+The left child (`.bloque-llamado-accion`) gets `flex: 1` and a white background with rounded corners. The right child (`.bloque-imagen-referencia`) also gets `flex: 1` and holds `.caja-vacia-marcador`, styled with a dashed `#a0aec0` border to indicate a future image placeholder.
+
+### `.seccion-experiencia-completa` — Combo Gallery Wrapper
+
+A white rounded section that wraps the full accordion gallery of combo cards:
+
+```css
+.seccion-experiencia-completa {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    padding: 25px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+```
+
+### `.galeria-contenedor` — Accordion Gallery Row
+
+Sets a fixed `380px` height and uses `display: flex` so all `.tarjeta` children sit in a horizontal row at equal width:
+
+```css
+.galeria-contenedor {
+    display: flex;
+    width: 100%;
+    height: 380px;
+    gap: 12px;
+}
+```
+
+### `.tarjeta` — Accordion Combo Card
+
+Each combo card starts at `flex: 1` (equal share of the row) and expands to `flex: 4` when hovered, creating the accordion reveal effect. The transition uses a custom `cubic-bezier` for an elastic, springy feel:
+
+```css
+.tarjeta {
+    transition: flex 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.tarjeta:hover {
+    flex: 4;
+}
+```
+
+Card content (`.contenido`) is hidden by default using `opacity: 0` and `translateY(15px)`, then fades up into view on hover:
+
+```css
+.tarjeta .contenido {
+    opacity: 0;
+    transform: translateY(15px);
+    transition: all 0.4s ease;
+}
+.tarjeta:hover .contenido {
+    opacity: 1;
+    transform: translateY(0);
+}
+```
+
+### `.btn-wsp-pedido` — Inline WhatsApp Order Button
+
+Green buttons rendered inside each combo card, matching WhatsApp's brand color:
+
+```css
+.btn-wsp-pedido {
+    background-color: #25D366;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.3s, transform 0.2s;
+}
+.btn-wsp-pedido:hover {
+    background-color: #128C7E;
+    transform: scale(1.05);
+}
+```
+
+### `.btn-wsp-flotante-principal` — Fixed Floating WhatsApp Button
+
+Anchored to the bottom-right corner of the viewport at all times, above all other content:
+
+```css
+.btn-wsp-flotante-principal {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    background-color: #25D366;
+    color: white;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 1.8rem;
+    z-index: 9999;
+    transition: background-color 0.3s, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.btn-wsp-flotante-principal:hover {
+    background-color: #128C7E;
+    transform: scale(1.1) rotate(10deg);
+}
+```
+
+### `.caja-footer-separada` — Footer Card
+
+A standalone white rounded box that separates the footer visually from the dark contact section above it:
+
+```css
+.caja-footer-separada {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+```
+
+## Navigation Bar
+
+The `<nav>` element sits inside a `.caja-estilo` box and uses a flex list to space links evenly:
+
+```css
+nav ul {
+    list-style: none;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 0 10px;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    font-size: 1.15rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+nav ul li a:hover {
+    color: #3e2723;
+    transform: scale(1.05);
+}
+```
+
+Font Awesome icons (loaded via CDN in `index.php`) sit inline next to each link label at `font-size: 1.25rem`. The hover state switches the link color from white to dark brown (`#3e2723`) and applies a subtle scale-up.
+
+## Responsive Breakpoint (768 px)
+
+At viewports narrower than 768 px the horizontal flex rows collapse to single-column stacks:
+
+```css
+@media (max-width: 768px) {
+    .bloque-central,
+    .caja-bienvenida-ancha {
+        flex-direction: column;
+    }
+    .caja-imagen {
+        height: 300px;
+    }
+    .caja-vacia-marcador {
+        min-height: 250px;
+    }
+}
+```
+
+This ensures the welcome panel, the image reference block, and any central block stack vertically on mobile instead of shrinking uncomfortably side by side.
+
+## Google Maps Rounded Corners
+
+<Tip>
+The `.caja-mapa` class uses `overflow: hidden` in combination with `border-radius: 12px` to clip the Google Maps `<iframe>` to rounded corners. Without `overflow: hidden`, the iframe ignores the border-radius and renders with sharp edges. The same technique works for any embedded iframe that needs rounded corners.
+</Tip>
+
+```css
+.caja-mapa {
+    width: 100%;
+    height: 300px;
+    border-radius: 12px;
+    overflow: hidden; /* Forces the iframe to respect border-radius */
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+```
+
+## Changing Brand Colors
+
+To rebrand the site, search for `#f7941d` (primary orange) and `#3e2723` (dark brown) throughout `estilo.css` and replace them with your new values. Both colors appear in a dozen or more rules each. The recommended long-term approach is to adopt the `:root` custom-property block shown at the top of this page so all values can be updated in one place.

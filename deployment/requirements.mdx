@@ -1,0 +1,110 @@
+---
+title: "Server Requirements for Sentidos Café"
+sidebarTitle: "Requirements"
+description: "Sentidos Café requires PHP 7.4+, MySQL 5.7+, and Apache or Nginx. This page lists all runtime dependencies and recommended server configurations."
+---
+
+Sentidos Café is a standard PHP/MySQL web application — there is no framework dependency or build step. Any server that satisfies the requirements below can host it. For local development the quickest route is an all-in-one stack like XAMPP or Laragon; for production any shared hosting plan that advertises PHP 7.4+ support will work fine.
+
+## Minimum Server Requirements
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| PHP | 7.4 | 8.2+ |
+| MySQL | 5.7 | 8.0+ |
+| MariaDB (alternative) | 10.3 | 10.11+ |
+| Apache | 2.4 | latest stable |
+| Nginx | 1.18 | latest stable |
+
+### PHP Extensions
+
+The application connects to MySQL exclusively through PDO, so the following extensions must be enabled in `php.ini`:
+
+- **`pdo`** — core PDO library (bundled with PHP but may need to be uncommented)
+- **`pdo_mysql`** — MySQL PDO driver; required for every database query in `conexion.php`
+- **`mbstring`** — multi-byte string handling for UTF-8 Spanish text (accents, ñ, etc.) used throughout the site
+
+To verify your extensions from the command line:
+
+```bash
+php -m | grep -E "pdo|mbstring"
+```
+
+All three names should appear in the output. If `pdo_mysql` is missing, uncomment `extension=pdo_mysql` in your `php.ini` and restart the web server.
+
+### Apache Configuration
+
+If you are using Apache, enable `mod_rewrite` so that clean URL support can be added later without structural changes:
+
+```bash
+# Enable mod_rewrite (Debian/Ubuntu)
+sudo a2enmod rewrite
+sudo systemctl restart apache2
+```
+
+On Windows (XAMPP), open `httpd.conf` and uncomment the `LoadModule rewrite_module` line, then set `AllowOverride All` in the `<Directory>` block for your project folder.
+
+## External Dependencies (CDN — No Installation Required)
+
+These libraries are loaded remotely and require no local installation or npm/Composer setup:
+
+| Library | Version | Source |
+|---------|---------|--------|
+| Font Awesome | 6.4.0 | `cdnjs.cloudflare.com` |
+| Google Maps Embed | — | Iframe embed; no API key required for basic display |
+| Product images | — | `images.unsplash.com` |
+
+The Font Awesome stylesheet is referenced in both `index.php` and `menu/menu.php`:
+
+```html
+<link rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+```
+
+A live internet connection is required for icons and product images to render. For fully offline or air-gapped deployments, download these assets locally.
+
+## Browser Compatibility
+
+The frontend uses CSS Flexbox for layout and standard ES6 JavaScript (arrow functions, `fetch`, template literals). No transpilation step is included, so the following minimum browser versions are required:
+
+| Browser | Minimum version |
+|---------|----------------|
+| Chrome | 60+ |
+| Firefox | 55+ |
+| Safari | 10.1+ |
+| Edge | 18+ |
+
+## Local Development Options
+
+Any of the stacks below bundle Apache, MySQL, PHP, and phpMyAdmin into a single installer, making them the fastest way to run Sentidos Café on a development machine without manual server configuration.
+
+<CardGroup cols={2}>
+  <Card
+    title="XAMPP"
+    icon="box-open"
+    href="https://www.apachefriends.org"
+  >
+    Cross-platform (Windows, macOS, Linux). The most widely used local stack for PHP development. Includes Apache, MariaDB, PHP, and phpMyAdmin in one installer.
+  </Card>
+  <Card
+    title="WAMP"
+    icon="windows"
+    href="https://www.wampserver.com"
+  >
+    Windows only. Similar to XAMPP and popular among Windows developers. Offers a convenient system-tray interface for managing services and virtual hosts.
+  </Card>
+  <Card
+    title="Laragon"
+    icon="bolt"
+    href="https://laragon.org"
+  >
+    Windows only. Lightweight and fast. Supports instant switching between PHP versions — useful if you need to test on both PHP 7.4 and PHP 8.x without reinstalling.
+  </Card>
+  <Card
+    title="MAMP"
+    icon="apple"
+    href="https://www.mamp.info"
+  >
+    macOS (and Windows). Clean GUI for starting and stopping Apache and MySQL. The free tier is sufficient for Sentidos Café development.
+  </Card>
+</CardGroup>

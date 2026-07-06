@@ -1,0 +1,138 @@
+---
+title: "Deploy Sentidos Café to a Live Server"
+sidebarTitle: "Going Live"
+description: "Upload the Sentidos Café PHP files to your hosting provider, import the MySQL database, and configure your domain to go live."
+---
+
+Sentidos Café has no build step and no dependency manager — you deploy by uploading files and importing one SQL script. The sections below cover choosing a host, uploading the project, provisioning the database, and verifying that every feature works on the live URL.
+
+## Choosing a Hosting Provider
+
+Any shared hosting plan that advertises **PHP 7.4+** and **MySQL** support is compatible. Popular options include Hostinger, SiteGround, Bluehost, and A2 Hosting — all of which include cPanel, phpMyAdmin, and FTP access out of the box. If you prefer more control, a VPS running Ubuntu with Apache or Nginx and PHP works equally well.
+
+<Tip>
+  Most shared hosts offer a free **Let's Encrypt SSL certificate** that can be activated in a few clicks from cPanel under "SSL/TLS" or the "Let's Encrypt" section. Enable HTTPS before sharing the URL publicly — it protects form submissions (customer names, phone numbers, and order details) in transit and improves search engine ranking.
+</Tip>
+
+## Step-by-Step Deployment
+
+<Steps>
+  <Step title="Purchase Hosting">
+    Choose a plan that includes PHP 7.4 or higher and a MySQL database. Most shared hosting providers bundle phpMyAdmin, which you will use in a later step to import the schema. Note your hosting control panel URL, FTP credentials, and MySQL hostname — these are usually emailed to you after sign-up.
+  </Step>
+
+  <Step title="Upload Files via FTP">
+    Use **FileZilla** (free, cross-platform) or your host's built-in File Manager to upload all project files. Connect to your server using the FTP credentials from your welcome email, then copy the entire project directory into `public_html/` (or a subdirectory such as `public_html/sentidos/` if you want the site at a path like `yourdomain.com/sentidos`).
+
+    ```bash
+    # Example FileZilla connection details
+    Host:     ftp.yourdomain.com
+    Username: your-ftp-user
+    Password: your-ftp-password
+    Port:     21
+    ```
+
+    Ensure that hidden files (`.htaccess` if present) are also transferred — FileZilla shows them when "View → Show hidden files" is enabled.
+  </Step>
+
+  <Step title="Create the MySQL Database">
+    Log into **cPanel** (or Plesk) and open the **MySQL Databases** tool:
+
+    1. Create a new database — use `sentidos_cafe_db` to match the name in `conexion.php`, or choose any name and update `conexion.php` accordingly.
+    2. Create a dedicated database user with a strong password.
+    3. Add the user to the database and grant **All Privileges**.
+
+    Record the exact database name, username, password, and MySQL hostname (cPanel typically shows this as `localhost` or `127.0.0.1`).
+  </Step>
+
+  <Step title="Import the Schema">
+    Open **phpMyAdmin** from cPanel, select the database you just created in the left-hand panel, then:
+
+    1. Click the **Import** tab at the top.
+    2. Click **Choose File** and select `script.sql` from your local machine.
+    3. Leave the format as **SQL** and click **Go**.
+
+    phpMyAdmin will create the `pedidos`, `reservas`, and `usuarios` tables and insert the default `admin` user. Verify the three tables appear in the left panel before continuing.
+  </Step>
+
+  <Step title="Update conexion.php">
+    Open `conexion.php` on the server (via File Manager or your FTP client) and replace the development defaults with the credentials from Step 3:
+
+    ```php
+    $host     = "127.0.0.1";          // Shared hosts often require 127.0.0.1, not localhost
+    $db_name  = "sentidos_cafe_db";   // The database name you created
+    $username = "sentidos_user";      // The dedicated MySQL user
+    $password = "StrongPassword123!"; // The password you set
+    ```
+
+    Save the file. If the connection is misconfigured, the site will display `"Error de conexión"` — see the troubleshooting section below.
+  </Step>
+
+  <Step title="Test the Live Site">
+    Visit your domain in a browser and check each of the following:
+
+    - **Homepage loads** — `index.php` renders with the header, navigation, map embed, and combo cards
+    - **WhatsApp button** — click the floating WhatsApp button; it should open `api.whatsapp.com` with a pre-filled message using the number in `buscador.js`
+    - **Google Maps embed** — the map of the Cusco location should be visible in the homepage location section
+    - **Menu page** — navigate to the menu and confirm product cards display with images and prices
+    - **Order submission** — select a product and submit the order form; check the `pedidos` table in phpMyAdmin to confirm the row was inserted
+    - **Table reservation** — submit a reservation and verify the row appears in the `reservas` table
+  </Step>
+</Steps>
+
+## File Upload Checklist
+
+Confirm all of the following files are present on the server after your FTP transfer:
+
+| File | Notes |
+|------|-------|
+| `index.php` | Homepage — requires `conexion.php` via `require_once` |
+| `conexion.php` | **Updated with production credentials** |
+| `buscador.js` | **Updated with the real business WhatsApp number** |
+| `estilo.css` | Homepage stylesheet |
+| `logo.jpg` | Café logo displayed in the header |
+| `plaza.png` | Plaza image asset |
+| `guardar_usuario.php` | AJAX endpoint for the visitor registration form |
+| `whatsapp_interactivo.js` | WhatsApp button logic (floating button + combo cards) |
+| `Login/login.php` | Admin login panel |
+| `Login/logout.php` | Session destruction |
+| `menu/menu.php` | Full menu with order form |
+| `menu/estilosmenu.css` | Menu page stylesheet |
+| `pedidos/guardar_pedidos.php` | Order processing and receipt generation |
+| `pedidos/pedidos.php` | Admin order management view |
+| `pedidos/editar_pedido.php` | Edit existing orders |
+| `pedidos/eliminar_pedido.php` | Delete orders |
+| `reservas/guardar_reserva.php` | Reservation form handler |
+| `reservas/ver_reservas.php` | Admin reservations view |
+| `reservas/editar_reserva.php` | Edit existing reservations |
+| `reservas/eliminar_reserva.php` | Delete reservations |
+| `script.sql` | Keep a copy — useful for re-importing if the database is reset |
+
+## Common Issues
+
+**Blank page after uploading**
+PHP is encountering a fatal error but not displaying it. Check your hosting control panel's error log (usually under `public_html/logs/error.log` or through cPanel → Error Logs). The most common cause is a `conexion.php` credential mismatch. You can temporarily add `ini_set('display_errors', 1); error_reporting(E_ALL);` at the top of `index.php` to see the error in the browser — remove it once resolved.
+
+**"Error de conexión" on every page**
+The MySQL hostname on shared hosts is often `127.0.0.1` rather than `localhost`. Open `conexion.php` and change `$host = "localhost"` to `$host = "127.0.0.1"`. Some hosts use a fully qualified hostname like `mysql.yourdomain.com` — check your cPanel welcome email or the MySQL Databases page for the correct value.
+
+**Images not loading**
+Verify that image paths are correct relative to the deployed directory. Product card images in `menu/menu.php` and hover images in `buscador.js` all point to `images.unsplash.com` — these require an active internet connection. If images are still missing, check for browser console errors (F12 → Network tab) to identify which specific URLs are failing.
+
+**WhatsApp button not working**
+Ensure `buscador.js` and `whatsapp_interactivo.js` were both uploaded. Open the browser console (F12) and look for a 404 error on either file. Also confirm that `const numeroTelefono` in `buscador.js` and `$numero_comercio` in `pedidos/guardar_pedidos.php` contain digits only — no spaces, dashes, or `+` signs — and that the number includes the country code (e.g., `51937604465` for Peru).
+
+**Orders not saving to the database**
+Open `pedidos/guardar_pedidos.php` and confirm `$conexion = mysqli_connect(...)` uses the same credentials as `conexion.php`. The orders module uses `mysqli_*` functions directly rather than the shared PDO connection, so its hostname, username, and password must be updated separately.
+
+<Accordion title="How do I set up a custom domain?">
+  To point a domain you own to your hosting server:
+
+  1. **Find your server's IP address** — this is shown in cPanel under "General Information" or "Shared IP Address".
+  2. **Log into your domain registrar** (GoDaddy, Namecheap, Cloudflare, etc.) and open the DNS management panel for your domain.
+  3. **Update the A record** — set the `@` (root) A record to your server's IP address. If you want `www` to work as well, add or update the `www` A record to the same IP.
+  4. **Wait for DNS propagation** — changes typically take 15 minutes to 2 hours, though full global propagation can take up to 48 hours.
+  5. **Configure a virtual host** (VPS only) — on a VPS you must add a `<VirtualHost>` block in Apache (or a `server {}` block in Nginx) that maps the domain to the `public_html` directory. Shared hosts handle this automatically when you add the domain through cPanel under "Addon Domains" or "Domains".
+
+  Once DNS resolves, visit `http://yourdomain.com` to confirm the site loads, then activate a free Let's Encrypt certificate through cPanel to enable HTTPS.
+</Accordion>

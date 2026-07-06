@@ -1,0 +1,169 @@
+---
+title: "Client-Side JavaScript in Sentidos Café"
+sidebarTitle: "JavaScript"
+description: "buscador.js powers all interactive features: image hover swaps, WhatsApp messaging, AJAX user registration, payroll calculations, and category search."
+---
+
+All client-side interactivity for Sentidos Café lives in a single file, `buscador.js`, which is loaded at the bottom of `index.php` just before the closing `</body>` tag — alongside the secondary `whatsapp_interactivo.js`. The script is written in vanilla ES6 with no external JavaScript libraries; Font Awesome icons are the only CDN dependency, loaded via a `<link>` tag in `<head>`.
+
+## Overview of the Five Logical Sections
+
+`buscador.js` is divided into five clearly commented sections, each responsible for a distinct feature of the page:
+
+| # | Section | Trigger |
+|---|---|---|
+| 1 | **Image hover effects** | `mouseenter` / `mouseleave` on `.tarjeta` cards and `#imagen-especialidad` |
+| 2 | **WhatsApp messaging** | `click` on `.btn-wsp-pedido` buttons and `#btn-wsp-flotante` |
+| 3 | **AJAX user registration** | `saludar()` called from a registration form |
+| 4 | **Payroll calculator** | `calcularYMostrar()` called from a salary form |
+| 5 | **Category search sidebar** | `submit` on `#formularioBuscador` |
+
+Sections 1, 2, and 5 are wrapped inside a `DOMContentLoaded` listener. Sections 3 and 4 are standalone functions called directly from form `onclick` attributes.
+
+## 1. Image Hover Effects
+
+A constant object, `fondosAlternativos`, maps each combo product name to a replacement Unsplash image URL. When the user hovers over a `.tarjeta` card, the card's `backgroundImage` style property is swapped to the alternative photo; when the cursor leaves, it reverts to the original image captured before the hover.
+
+```js
+const fotoWaffles        = "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?q=80&w=600";
+const fotoHamburguesa    = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=600";
+const fotoQuequesCanasta = "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?q=80&w=600";
+const fotoJugosVariados  = "http://googleusercontent.com/image_collection/image_retrieval/6766577479720039937_0";
+
+const fondosAlternativos = {
+    "Combo Dúo (2 Personas)": fotoWaffles,
+    "Mix Antojos (3-4 Personas)": fotoHamburguesa,
+    "Súper Banquete (5 Personas)": fotoQuequesCanasta,
+    "Mega Compartir (Hasta 7 Personas)": fotoJugosVariados
+};
+```
+
+The product name key is read from the `data-producto` attribute of the `.btn-wsp-pedido` button nested inside each `.tarjeta`. This keeps the mapping tightly coupled to the same attribute used for WhatsApp orders, so updating a product name in the HTML automatically updates both the hover image and the order message.
+
+A separate hover swap also applies to `#imagen-especialidad` (the "Nuestra Especialidad del Día" image in the welcome panel), which swaps to `fotoBrunchEspecial` on hover.
+
+## 2. Event Wiring with DOMContentLoaded
+
+All event listeners for sections 1, 2, and 5 are registered inside a single `DOMContentLoaded` callback. This guarantees the DOM is fully parsed before any `querySelector` or `getElementById` call runs:
+
+```js
+document.addEventListener('DOMContentLoaded', function() {
+    const tarjetasCombo = document.querySelectorAll('.seccion-experiencia-completa .tarjeta');
+
+    tarjetasCombo.forEach(function(tarjeta) {
+        const botonInterno = tarjeta.querySelector('.btn-wsp-pedido');
+        if (!botonInterno) return;
+
+        const nombreProducto = botonInterno.getAttribute('data-producto');
+        const fotoOriginalTarjeta = tarjeta.style.backgroundImage;
+
+        tarjeta.addEventListener('mouseenter', function() {
+            if (fondosAlternativos[nombreProducto]) {
+                tarjeta.style.backgroundImage = `url('${fondosAlternativos[nombreProducto]}')`;
+            }
+        });
+
+        tarjeta.addEventListener('mouseleave', function() {
+            tarjeta.style.backgroundImage = fotoOriginalTarjeta;
+        });
+    });
+});
+```
+
+<Note>
+The script checks `if (!botonInterno) return;` and `if (imgEspecialidad)` before attaching listeners. Similarly, the category search uses `if (formularioBuscador)` before adding the submit listener. These null-guard checks make `buscador.js` safe to include on any page — elements that are absent simply skip their setup without throwing a `TypeError`.
+</Note>
+
+## 3. AJAX User Registration
+
+The `saludar()` function is a standalone function called directly from the registration form. It collects four fields — names, surnames, age, and gender — validates them client-side, then sends a `POST` request to `guardar_usuario.php` using the Fetch API with a `FormData` body.
+
+The PHP endpoint returns the plain string `"EXITO"` on success, or an error message on failure. The result is written back into `#bloqueResultadoSaludo` without a page reload:
+
+```js
+fetch('guardar_usuario.php', {
+    method: 'POST',
+    body: datosFormulario
+})
+.then(response => response.text())
+.then(resultado => {
+    if (resultado.trim() === "EXITO") {
+        // Render success message and clear form fields
+    } else {
+        // Render SQL error message
+    }
+})
+.catch(error => {
+    // Render network error message
+    console.error("Fallo en Fetch: ", error);
+});
+```
+
+A loading state (`⏳ Conectando con MySQL...`) is shown immediately after submission so the user receives feedback before the server responds.
+
+## 4. Payroll Calculator
+
+The `calcularYMostrar()` function implements a simple Peruvian income-tax retention table. It reads a name and gross salary, applies a tiered tax rate, then populates a `<table>` (`#tablaResultados`) with the results:
+
+```js
+function calcularYMostrar() {
+    const nombre     = document.getElementById("nombre").value.trim();
+    const sueldoBruto = parseFloat(document.getElementById("sueldo").value);
+
+    let porcentaje = 0;
+    if (sueldoBruto > 1500 && sueldoBruto <= 3000) porcentaje = 8;
+    else if (sueldoBruto > 3000) porcentaje = 14;
+
+    const montoImpuesto = (sueldoBruto * porcentaje) / 100;
+    const sueldoNeto    = sueldoBruto - montoImpuesto;
+    const estado        = porcentaje > 0 ? "Sujeto a Retención" : "Exonerado";
+
+    document.getElementById("outSueldo").textContent    = `S/ ${sueldoBruto.toFixed(2)}`;
+    document.getElementById("outSueldoNeto").textContent = `S/ ${sueldoNeto.toFixed(2)}`;
+
+    document.getElementById("tablaResultados").style.display = "table";
+}
+```
+
+Salaries at or below S/ 1,500 are tax-exempt ("Exonerado"). Salaries between S/ 1,500 and S/ 3,000 incur an 8% retention. Salaries above S/ 3,000 incur a 14% retention.
+
+## 5. Category Search Sidebar
+
+The `#formularioBuscador` form contains a `<select id="categoria">` whose `value` attributes are URLs (relative paths to category pages). The script intercepts the default form submission, reads the selected URL, and navigates there directly:
+
+```js
+const formularioBuscador = document.getElementById('formularioBuscador');
+if (formularioBuscador) {
+    formularioBuscador.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const categoriaSeleccionada = document.getElementById('categoria').value;
+        if (categoriaSeleccionada) {
+            window.location.href = categoriaSeleccionada;
+        }
+    });
+}
+```
+
+`event.preventDefault()` stops the browser from appending query parameters to the URL, keeping the navigation clean. If the user submits without selecting a category (empty value), the `if (categoriaSeleccionada)` guard silently does nothing.
+
+## Dependencies
+
+<Steps>
+  <Step title="No JS frameworks">
+    `buscador.js` is plain ES6. There is no jQuery, no Alpine.js, no React — only native browser APIs (`document.querySelector`, `addEventListener`, `fetch`, `window.location`).
+  </Step>
+  <Step title="Font Awesome via CDN">
+    Icons used inside buttons (e.g., the WhatsApp brand icon `fa-brands fa-whatsapp`) come from Font Awesome 6.4.0, loaded in `<head>`:
+    ```html
+    <link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    ```
+  </Step>
+  <Step title="whatsapp_interactivo.js">
+    A second script, `whatsapp_interactivo.js`, is also loaded in `index.php` after `buscador.js`. It is a separate file that may contain additional WhatsApp-specific logic. The two scripts are independent — `buscador.js` already handles all `.btn-wsp-pedido` and `#btn-wsp-flotante` click events internally.
+  </Step>
+</Steps>
+
+<Tip>
+The `abrirWhatsapp()` function passes the product name through `encodeURIComponent()` before appending it to the WhatsApp API URL. This is essential for product names that contain spaces, accented characters (e.g., `Dúo`, `Súper`, `Antojos`), or parentheses — all of which would break a raw URL string. Always use `encodeURIComponent` on any user-facing or dynamic text that is interpolated into a URL.
+</Tip>

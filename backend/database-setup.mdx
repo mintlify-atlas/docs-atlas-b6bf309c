@@ -1,0 +1,147 @@
+---
+title: "MySQL Database Setup for Sentidos Café"
+sidebarTitle: "Database Setup"
+description: "Create and initialize the sentidos_cafe_db MySQL database using script.sql — includes the pedidos, reservas, and usuarios tables with sample data."
+---
+
+The Sentidos Café backend relies on a single MySQL database named `sentidos_cafe_db` to persist all operational data. Three tables power the core features of the site: `pedidos` tracks delivery and takeaway orders placed through the menu, `reservas` stores dine-in table reservations, and `usuarios` holds admin login credentials that protect the management panel. Running `script.sql` once creates the entire schema and seeds the default administrator account.
+
+## Database Overview
+
+| Table | Purpose |
+|---|---|
+| `pedidos` | Customer orders — name, phone, delivery address, products, total in PEN, timestamp |
+| `reservas` | Table reservations — guest info, date/time, party size, preferred seating zone |
+| `usuarios` | Admin accounts — username and password for the login panel |
+
+## Full Schema: script.sql
+
+The complete `script.sql` file shipped with the project contains every `CREATE TABLE` statement and the default admin seed row:
+
+```sql
+-- 1. CREAR LA BASE DE DATOS
+CREATE DATABASE IF NOT EXISTS sentidos_cafe_db;
+USE sentidos_cafe_db;
+
+-- 2. TABLA: pedidos
+CREATE TABLE IF NOT EXISTS pedidos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente VARCHAR(100) NOT NULL,
+    telefono VARCHAR(50) NOT NULL,
+    direccion VARCHAR(255) NOT NULL,
+    producto TEXT NOT NULL,
+    total DECIMAL(10,2) NOT NULL,
+    fecha DATETIME NOT NULL
+);
+
+-- 3. TABLA: reservas
+CREATE TABLE IF NOT EXISTS reservas (
+    id_reserva INT AUTO_INCREMENT PRIMARY KEY,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    telefono VARCHAR(50) NOT NULL,
+    fecha_reserva DATE NOT NULL,
+    hora_reserva TIME NOT NULL,
+    cantidad_personas INT NOT NULL,
+    zona_preferida VARCHAR(100) NOT NULL,
+    fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. TABLA: usuarios (Para el login)
+CREATE TABLE IF NOT EXISTS usuarios (
+    id_usuario INT AUTO_INCREMENT PRIMARY KEY,
+    user VARCHAR(50) NOT NULL,
+    pass VARCHAR(255) NOT NULL
+);
+
+-- Insertar el usuario administrador por defecto
+INSERT INTO usuarios (id_usuario, user, pass)
+VALUES (1, 'admin', 'admin123')
+ON DUPLICATE KEY UPDATE user='admin';
+```
+
+<Warning>
+The default admin password `admin123` is stored in **plaintext**. Before deploying to a live server, replace it with a properly hashed value using PHP's `password_hash()` function and update the login verification to use `password_verify()`. Plaintext passwords expose the admin panel to trivial credential attacks.
+</Warning>
+
+## Table Descriptions
+
+### pedidos — Customer Orders
+
+Captures every order submitted through the café's online menu. The `producto` column stores a comma-separated list of items (e.g. `"2x Café Espresso, 1x Waffles"`) built by `guardar_pedidos.php`. The `total` column is a `DECIMAL(10,2)` representing the amount in Peruvian Sol (S/). The `direccion` field holds either the customer's delivery address or the literal string `"Recojo en Tienda"` for in-store pickup.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INT AUTO_INCREMENT | Primary key |
+| `cliente` | VARCHAR(100) | Customer full name |
+| `telefono` | VARCHAR(50) | WhatsApp-compatible phone number |
+| `direccion` | VARCHAR(255) | Delivery address or "Recojo en Tienda" |
+| `producto` | TEXT | Comma-separated product list with quantities |
+| `total` | DECIMAL(10,2) | Order total in S/ (Peruvian Sol) |
+| `fecha` | DATETIME | Order timestamp |
+
+### reservas — Table Reservations
+
+Stores dine-in reservation requests. `zona_preferida` maps to the three seating zones available in the reservation form: **Terraza / Aire Libre**, **Salón Principal**, and **Zona VIP / Privada**. `fecha_registro` is automatically set to `CURRENT_TIMESTAMP` and is not provided by the guest.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id_reserva` | INT AUTO_INCREMENT | Primary key |
+| `nombres` | VARCHAR(100) | Guest first name |
+| `apellidos` | VARCHAR(100) | Guest last name |
+| `telefono` | VARCHAR(50) | Contact phone number |
+| `fecha_reserva` | DATE | Requested reservation date |
+| `hora_reserva` | TIME | Requested reservation time |
+| `cantidad_personas` | INT | Party size |
+| `zona_preferida` | VARCHAR(100) | Preferred seating zone |
+| `fecha_registro` | DATETIME | Auto-set row creation timestamp |
+
+### usuarios — Admin Accounts
+
+Used exclusively by `Login/login.php` to authenticate administrators. The `user` column maps to the `usuario` POST field and `pass` maps to `password`. The `ON DUPLICATE KEY UPDATE` clause in the seed `INSERT` ensures re-running the script does not create duplicate admin rows.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id_usuario` | INT AUTO_INCREMENT | Primary key |
+| `user` | VARCHAR(50) | Login username |
+| `pass` | VARCHAR(255) | Password (should be hashed with `password_hash()`) |
+
+## Setup Steps
+
+<Steps>
+  <Step title="Open phpMyAdmin">
+    Navigate to [http://localhost/phpmyadmin](http://localhost/phpmyadmin) in your browser. Log in with your MySQL root credentials. On a default XAMPP or WAMP installation the password is blank.
+  </Step>
+  <Step title="Create the database">
+    Click **New** in the left sidebar. Enter `sentidos_cafe_db` as the database name and select **utf8\_general\_ci** as the collation. Click **Create**. Using UTF-8 collation ensures Spanish characters (tildes, ñ) are stored and sorted correctly.
+  </Step>
+  <Step title="Run the SQL script">
+    With `sentidos_cafe_db` selected in the left panel, click the **SQL** tab at the top. Paste the entire contents of `script.sql` into the query box and click **Go**. MySQL will create all three tables and insert the default admin row in a single pass.
+  </Step>
+  <Step title="Verify the tables">
+    After the query completes, refresh the left panel. You should see three entries under `sentidos_cafe_db`: **pedidos**, **reservas**, and **usuarios**. Click **usuarios** and confirm the `admin` row was inserted.
+  </Step>
+</Steps>
+
+<Tip>
+If you prefer the command line over phpMyAdmin, you can run the script directly from a terminal:
+
+```bash
+mysql -u root -p < script.sql
+```
+
+MySQL will prompt for your password, then execute every statement in the file automatically.
+</Tip>
+
+## Sample Query — Recent Orders
+
+Use this query in the phpMyAdmin SQL tab or any MySQL client to review the ten most recent orders at a glance:
+
+```sql
+SELECT cliente, producto, total, fecha 
+FROM pedidos 
+ORDER BY fecha DESC 
+LIMIT 10;
+```
+
+This is useful for quickly verifying that the order form is writing to the database correctly after setup.

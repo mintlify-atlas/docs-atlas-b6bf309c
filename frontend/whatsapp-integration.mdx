@@ -1,0 +1,212 @@
+---
+title: "WhatsApp Integration: Buttons & Chat Widget"
+sidebarTitle: "WhatsApp Integration"
+description: "Sentidos Café integrates WhatsApp using the wa.me API link pattern. Configure the phone number, customize messages, and understand the floating chat widget."
+---
+
+Sentidos Café connects customers directly to the café's WhatsApp line through two distinct touchpoints: inline order buttons embedded in each combo card and a persistent floating chat button fixed to the bottom-right corner of every page. Both are powered by the standard `api.whatsapp.com/send` deep-link pattern — no WhatsApp Business API account or third-party service is required.
+
+## How the WhatsApp API Link Works
+
+The integration is built on a single URL format:
+
+```
+https://api.whatsapp.com/send?phone=PHONENUMBER&text=URLENCODED_MESSAGE
+```
+
+When a user clicks a button:
+
+1. The browser opens `https://api.whatsapp.com/send` in a new tab.
+2. WhatsApp (desktop app, mobile app, or `web.whatsapp.com`) opens automatically.
+3. A new conversation to the configured number is pre-loaded with the message already typed.
+4. The user simply taps **Send** — no manual typing required.
+
+This works with any standard WhatsApp number and requires only the recipient phone number and a URL-encoded message string.
+
+## The Core `abrirWhatsapp` Function
+
+All WhatsApp buttons on the site call a single shared function defined inside the `DOMContentLoaded` block in `buscador.js`:
+
+```js
+const numeroTelefono = "937604465"; // Sin el + ni el código de país
+
+function abrirWhatsapp(producto) {
+    const mensaje = `Hola Sentidos Café Cusco, deseo solicitar más información o realizar un pedido del producto: ${producto}.`;
+    const url = `https://api.whatsapp.com/send?phone=${numeroTelefono}&text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+}
+```
+
+The product name is injected into the message template literal at runtime, so each combo automatically generates a unique, descriptive message. `encodeURIComponent` converts spaces and accented characters (like `Dúo` or `Súper`) into safe URL sequences before the link is opened.
+
+<Tip>
+`window.open(url, '_blank')` opens WhatsApp in a new browser tab, keeping the Sentidos Café page fully intact in the original tab. If you used `window.location.href` instead, the user would be navigated away from the site.
+</Tip>
+
+## Inline Order Buttons (`.btn-wsp-pedido`)
+
+Each combo card in the accordion gallery contains an inline green order button. The product name is stored in the `data-producto` HTML attribute and read by JavaScript at click time — no hardcoded strings inside `buscador.js`.
+
+**HTML structure (from `index.php`):**
+
+```html
+<button class="btn-wsp-pedido" data-producto="Combo Dúo (2 Personas)">
+    <i class="fa-brands fa-whatsapp"></i> Pedir Combo
+</button>
+```
+
+**JavaScript wiring:**
+
+```js
+const botonesPedido = document.querySelectorAll('.btn-wsp-pedido');
+botonesPedido.forEach(btn => {
+    btn.addEventListener('click', function() {
+        const producto = this.getAttribute('data-producto');
+        abrirWhatsapp(producto);
+    });
+});
+```
+
+The four combo buttons currently in `index.php` and their `data-producto` values are:
+
+| Card | `data-producto` value |
+|---|---|
+| Combo Dúo | `Combo Dúo (2 Personas)` |
+| Mix Antojos | `Mix Antojos (3-4 Personas)` |
+| Súper Banquete | `Súper Banquete (5 Personas)` |
+| Mega Compartir | `Mega Compartir (Hasta 7 Personas)` |
+
+**CSS styling** (from `estilo.css`) — the buttons use WhatsApp's brand green and darken on hover:
+
+```css
+.btn-wsp-pedido {
+    background-color: #25D366;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.3s, transform 0.2s;
+}
+.btn-wsp-pedido:hover {
+    background-color: #128C7E;
+    transform: scale(1.05);
+}
+```
+
+## Floating Chat Button (`#btn-wsp-flotante`)
+
+A circular green button with the WhatsApp icon is fixed to the bottom-right corner of the viewport on every page. It uses `id="btn-wsp-flotante"` and the CSS class `.btn-wsp-flotante-principal`.
+
+**HTML (from `index.php`, placed just before `</body>`):**
+
+```html
+<button id="btn-wsp-flotante" class="btn-wsp-flotante-principal" data-produto="Consulta General">
+    <i class="fa-brands fa-whatsapp"></i>
+</button>
+```
+
+**JavaScript wiring:**
+
+```js
+const btnFlotante = document.getElementById('btn-wsp-flotante');
+if (btnFlotante) {
+    btnFlotante.addEventListener('click', function() {
+        const producto = this.getAttribute('data-producto') || "Consulta General";
+        abrirWhatsapp(producto);
+    });
+}
+```
+
+Because `data-producto` is set to `"Consulta General"`, the generated message reads:
+
+> *Hola Sentidos Café Cusco, deseo solicitar más información o realizar un pedido del producto: Consulta General.*
+
+**CSS positioning and animation:**
+
+```css
+.btn-wsp-flotante-principal {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    background-color: #25D366;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 1.8rem;
+    z-index: 9999;
+    transition: background-color 0.3s,
+                transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.btn-wsp-flotante-principal:hover {
+    background-color: #128C7E;
+    transform: scale(1.1) rotate(10deg);
+}
+```
+
+The springy `cubic-bezier` on the hover `transform` gives the button a bouncy, attention-grabbing wiggle — helping it stand out without an autoplay animation.
+
+## Changing the WhatsApp Number
+
+The phone number is defined as a constant near the top of the `DOMContentLoaded` block in `buscador.js`:
+
+```js
+// In buscador.js, inside the DOMContentLoaded callback (~line 43):
+const numeroTelefono = "937604465"; // Replace with your number (digits only, include country code)
+```
+
+<Warning>
+The phone number must contain **digits only** — no `+` sign, no spaces, no dashes, and no parentheses. The WhatsApp API rejects any non-digit characters in the `phone` parameter and the link will fail silently.
+
+For Peruvian numbers, the country code is `51`. A Lima mobile number would be written as `51912345678`. The current Cusco number `937604465` is stored without the country prefix — for international use it should be `51937604465`.
+</Warning>
+
+<Steps>
+  <Step title="Open buscador.js">
+    Locate the line `const numeroTelefono = "937604465";` inside the `DOMContentLoaded` callback.
+  </Step>
+  <Step title="Replace the number">
+    Replace `"937604465"` with your full number including country code and no special characters. For Peru: `"51937604465"`.
+  </Step>
+  <Step title="Save and test">
+    Click any `.btn-wsp-pedido` button or the floating button, confirm the WhatsApp link opens to the correct number, and verify the pre-filled message text is correct.
+  </Step>
+</Steps>
+
+## Customizing the Message Template
+
+The message text is a template literal inside `abrirWhatsapp()`. Edit it freely to match your brand voice:
+
+```js
+function abrirWhatsapp(producto) {
+    const mensaje = `Hola Sentidos Café Cusco, deseo solicitar más información o realizar un pedido del producto: ${producto}.`;
+    // ↑ Edit this string. Keep ${producto} to inject the dynamic product name.
+    const url = `https://api.whatsapp.com/send?phone=${numeroTelefono}&text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+}
+```
+
+Keep `${producto}` in the string — it is replaced at runtime with the value of the `data-producto` attribute from whichever button the user clicked.
+
+## Adding a New Product Button
+
+To add a WhatsApp order button for a new menu item, paste this snippet into the appropriate section of your HTML and set `data-producto` to the exact product name:
+
+```html
+<button class="btn-wsp-pedido" data-producto="Café Americano">
+    <i class="fa-brands fa-whatsapp"></i> Pedir Ahora
+</button>
+```
+
+No JavaScript changes are needed. The `querySelectorAll('.btn-wsp-pedido')` loop in `buscador.js` automatically picks up any button with that class and attaches the click listener. If you also want an alternative hover image for the new card, add an entry to the `fondosAlternativos` object in `buscador.js`:
+
+```js
+const fondosAlternativos = {
+    // ...existing entries...
+    "Café Americano": "https://images.unsplash.com/photo-XXXXXXXX?w=600"
+};
+```

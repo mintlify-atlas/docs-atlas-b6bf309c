@@ -1,0 +1,130 @@
+---
+title: "WhatsApp Ordering: How Customers Place Orders"
+sidebarTitle: "Ordering"
+description: "Sentidos Café uses WhatsApp API links to let customers place orders instantly — no app installation needed, with pre-filled order messages."
+---
+
+Sentidos Café skips a traditional shopping cart entirely. Instead, every order button on the site constructs a deep-link to the WhatsApp API that opens a pre-filled conversation with the café. Customers tap once, review the message, and hit send — the order lands directly in WhatsApp without any account creation or app download.
+
+## How the WhatsApp API Link Works
+
+The WhatsApp send-link format is:
+
+```
+https://api.whatsapp.com/send?phone=NUMBER&text=MESSAGE
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `phone`   | International phone number without `+` or spaces (e.g. `51937604465`) |
+| `text`    | URL-encoded message that pre-fills the WhatsApp chat input |
+
+The site opens this URL in a new browser tab via `window.open(url, '_blank')`, so the customer's current page stays intact.
+
+## Phone Number & Message Template
+
+Both the phone number and the message template live in `buscador.js`. The café's Cusco number is stored as a plain string constant:
+
+```js
+const numeroTelefono = "937604465"; // Cusco number — no country code prefix needed here
+```
+
+The `abrirWhatsapp()` helper assembles the full URL:
+
+```js
+function abrirWhatsapp(producto) {
+    const mensaje = `Hola Sentidos Café Cusco, deseo solicitar más información o realizar un pedido del producto: ${producto}.`;
+    const url = `https://api.whatsapp.com/send?phone=${numeroTelefono}&text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+}
+```
+
+When a customer clicks the **Combo Dúo** button, for example, the pre-filled message reads:
+
+```
+Hola Sentidos Café Cusco, deseo solicitar más información o realizar un pedido del producto: Combo Dúo (2 Personas).
+```
+
+<Warning>
+  `encodeURIComponent()` is **required** around the message string before appending it to the URL. Product names contain spaces, accented vowels (á, é, ú), and parentheses — all of which are illegal in a raw query string. Skipping this call will produce a broken URL and the WhatsApp link will fail to open or will send a garbled message.
+</Warning>
+
+## Two Types of WhatsApp Buttons
+
+### 1. Inline Order Buttons (`.btn-wsp-pedido`)
+
+One button lives inside each combo card in the accordion gallery. The button's `data-producto` attribute holds the exact product name, which is passed to `abrirWhatsapp()` on click.
+
+```html
+<!-- index.php — inside each .tarjeta -->
+<button class="btn-wsp-pedido" data-producto="Mix Antojos (3-4 Personas)">
+    <i class="fa-brands fa-whatsapp"></i> Pedir Combo
+</button>
+```
+
+The event wiring in `buscador.js` loops over every `.btn-wsp-pedido` element:
+
+```js
+const botonesPedido = document.querySelectorAll('.btn-wsp-pedido');
+botonesPedido.forEach(btn => {
+    btn.addEventListener('click', function() {
+        const producto = this.getAttribute('data-producto');
+        abrirWhatsapp(producto);
+    });
+});
+```
+
+### 2. Floating Button (`#btn-wsp-flotante`)
+
+A persistent floating button is fixed to the bottom-right corner of every page and is always visible while scrolling. It carries `data-producto="Consulta General"`, so clicking it opens a generic inquiry message rather than a product-specific one.
+
+```html
+<!-- index.php — outside .contenedor-principal, just before </body> -->
+<button id="btn-wsp-flotante"
+        class="btn-wsp-flotante-principal"
+        data-producto="Consulta General">
+    <i class="fa-brands fa-whatsapp"></i>
+</button>
+```
+
+```js
+// buscador.js — floating button handler
+const btnFlotante = document.getElementById('btn-wsp-flotante');
+if (btnFlotante) {
+    btnFlotante.addEventListener('click', function() {
+        const producto = this.getAttribute('data-producto') || "Consulta General";
+        abrirWhatsapp(producto);
+    });
+}
+```
+
+The button's CSS positions it with `position: fixed; bottom: 25px; right: 25px;` and a `z-index: 9999` so it floats above all page content.
+
+## Configuration Reference
+
+<CardGroup cols={2}>
+  <Card title="Change the Phone Number" icon="phone">
+    Open `buscador.js` and update the `numeroTelefono` constant:
+
+    ```js
+    const numeroTelefono = "937604465";
+    ```
+
+    Use digits only — no `+`, no spaces, no country code prefix in this variable. The WhatsApp API accepts the number as-is when the `phone` parameter is set.
+  </Card>
+  <Card title="Customise the Message" icon="message">
+    Edit the template string inside `abrirWhatsapp()`:
+
+    ```js
+    const mensaje = `Hola Sentidos Café Cusco,
+deseo solicitar más información o
+realizar un pedido del producto: ${producto}.`;
+    ```
+
+    The `${producto}` placeholder is replaced at runtime with the value from `data-producto`. Keep `encodeURIComponent(mensaje)` in the URL construction.
+  </Card>
+</CardGroup>
+
+<Note>
+  The `api.whatsapp.com/send` link works for **any** WhatsApp account — personal or Business — and does not require the customer to have the café's number saved in their contacts. The conversation opens instantly in the WhatsApp app (mobile) or WhatsApp Web (desktop), whichever is available.
+</Note>

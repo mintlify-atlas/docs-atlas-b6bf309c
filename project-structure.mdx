@@ -1,0 +1,160 @@
+---
+title: "Sentidos Café Project File Structure"
+sidebarTitle: "Structure"
+description: "Explore the files and directories that make up the Sentidos Café website, from PHP templates to CSS styles and the MySQL schema."
+---
+
+Sentidos Café follows a flat-root layout for the core files — the homepage, connection layer, scripts, and styles all live at the project root — with feature-specific CRUD modules organized into subdirectories. Understanding where each file lives and what it is responsible for makes it straightforward to extend the project or debug an issue without hunting across a complex framework structure.
+
+## Directory Tree
+
+```
+sentidos-cafe/
+├── index.php                   # Main homepage
+├── conexion.php                # MySQL PDO connection
+├── buscador.js                 # Client-side interactions & AJAX
+├── estilo.css                  # All styles and responsive layout
+├── script.sql                  # Database schema setup
+├── logo.jpg                    # Café logo image
+├── plaza.png                   # Location reference image
+│
+├── menu/                       # Full interactive menu module
+│   ├── menu.php                # Menu page (linked from nav)
+│   ├── estilosmenu.css         # Menu-specific styles
+│   └── cafe_expreso/           # Sub-category assets
+│
+├── pedidos/                    # Orders CRUD module
+│   ├── pedidos.php             # Orders list / dashboard
+│   ├── guardar_pedidos.php     # POST endpoint — saves a new order
+│   ├── editar_pedido.php       # Edit an existing order
+│   ├── eliminar_pedido.php     # Delete an order
+│   ├── registro_pedidos.php    # Order registration form
+│   ├── administrar_clientes.php# Client management view
+│   └── estilospedidos.css      # Orders-specific styles
+│
+├── reservas/                   # Reservations CRUD module
+│   ├── guardar_reserva.php     # POST endpoint — saves a reservation
+│   ├── ver_reservas.php        # View all reservations
+│   ├── editar_reserva.php      # Edit an existing reservation
+│   ├── eliminar_reserva.php    # Delete a reservation
+│   └── estilosreserva.css      # Reservations-specific styles
+│
+└── Login/                      # Authentication module
+    ├── login.php               # Login form + session start
+    └── logout.php              # Session destroy + redirect
+```
+
+## Root-Level Files
+
+### `index.php`
+
+The main entry point of the application. It opens with `require_once 'conexion.php'` to make the `$conexion` PDO object available, then renders the complete single-page homepage as server-side HTML. Key sections in document order:
+
+1. **Header** — orange `caja-estilo` box containing the circular `logo.jpg` image and the "Sentidos Café" title with the tagline *"Despierta tus sentidos con nuestro aroma."*
+2. **Navigation** — orange nav bar with Font Awesome icons linking to `index.php`, `/movelo/menu/menu.php`, the location anchor, and `#seccion-contacto`
+3. **Welcome section** (`.caja-bienvenida-ancha`) — two-column flex layout: a white call-to-action panel on the left with a circular coffee-cup image and a large "VER MENÚ" button; a dashed placeholder panel on the right
+4. **Google Maps section** (`.caja-especialidad-ancha`) — embedded iframe centred on coordinates `-13.5269295, -71.9492471` with a "Ver en Google Maps" deep-link button
+5. **Combo gallery** (`.seccion-experiencia-completa`) — four accordion-style card components (Combo Dúo, Mix Antojos, Súper Banquete, Mega Compartir), each with a WhatsApp order button driven by `data-producto` attributes
+6. **Contact footer** (`#seccion-contacto`) — dark brown section with email, phone, and social media icon links (Facebook, Instagram, TikTok)
+7. **Floating WhatsApp button** — fixed-position green circle rendered via `#btn-wsp-flotante`
+
+The file closes by loading `buscador.js` and `whatsapp_interactivo.js` just before `</body>`.
+
+---
+
+### `conexion.php`
+
+The single shared database connection file. It defines four variables (`$host`, `$db_name`, `$username`, `$password`), instantiates a PDO object with `charset=utf8`, and sets `PDO::ATTR_ERRMODE` to `PDO::ERRMODE_EXCEPTION` so that any SQL error throws a catchable `PDOException` rather than silently failing. A `catch` block calls `die()` with the error message to surface connection problems immediately during development.
+
+Every other PHP file in the project accesses the database through this file via:
+
+```php
+require_once 'conexion.php';
+// $conexion is now available as a PDO instance
+```
+
+---
+
+### `buscador.js`
+
+The main client-side JavaScript file, loaded on every page that includes it. It is structured into five clearly commented sections:
+
+| Section | Responsibility |
+|---|---|
+| **1 — Hover & image effects** | Swaps background images on combo cards and the speciality image block on `mouseenter` / `mouseleave` using a `fondosAlternativos` lookup map |
+| **2 — WhatsApp logic** | `abrirWhatsapp(producto)` builds a `https://api.whatsapp.com/send?phone=937604465&text=...` URL with a pre-filled Spanish message and calls `window.open()`. Wired to all `.btn-wsp-pedido` buttons and the `#btn-wsp-flotante` floating button |
+| **3 — AJAX user registration** | `saludar()` reads the `#reg-nombres`, `#reg-apellidos`, `#reg-edad`, and `#reg-genero` fields, builds a `FormData` object, and POSTs it to `guardar_usuario.php` via `fetch()`. It updates the `#bloqueResultadoSaludo` div with a success or error message inline — no page reload |
+| **4 — Payroll calculator** | `calcularYMostrar()` reads a name and gross salary, applies a 0 % / 8 % / 14 % tax band, and writes the net salary and retention status into a `<table id="tablaResultados">` |
+| **5 — Category search** | Listens to `#formularioBuscador` submit, reads the `#categoria` select value, and redirects with `window.location.href` — preventing the default form submission from breaking the URL |
+
+---
+
+### `estilo.css`
+
+The complete stylesheet for the homepage. Notable design decisions drawn directly from the source:
+
+- **Color palette** — primary orange `#f7941d` / dark coffee brown `#3e2723` / light grey container background `#d9e1e8` / near-black page background `#0b0b0b`
+- **Layout** — all major sections use CSS Flexbox; `.contenedor-principal` is centred with `max-width: 850px`
+- **Orange boxes** — the `.caja-estilo` class (header, nav) applies the brand orange background with a `#d35400` border and `15px` border-radius
+- **Accordion gallery** — `.tarjeta` cards use `flex: 1` at rest, expanding to `flex: 4` on hover via a `cubic-bezier` transition, revealing the `.contenido` overlay with a `translateY` fade-in
+- **WhatsApp buttons** — `.btn-wsp-pedido` uses WhatsApp green `#25D366` / dark teal `#128C7E` on hover; the floating `.btn-wsp-flotante-principal` is `position: fixed` at `bottom: 25px; right: 25px` with `z-index: 9999`
+- **Responsive breakpoints** — `@media (max-width: 768px)` switches `.caja-bienvenida-ancha` from row to column layout and constrains image heights for mobile viewports
+
+---
+
+### `script.sql`
+
+The complete MySQL DDL and seed file. Running this file creates the `sentidos_cafe_db` database (if it does not exist), creates the `pedidos`, `reservas`, and `usuarios` tables with all constraints, and inserts the default `admin / admin123` user row using `ON DUPLICATE KEY UPDATE` so it is safe to re-run:
+
+```sql
+CREATE DATABASE IF NOT EXISTS sentidos_cafe_db;
+USE sentidos_cafe_db;
+
+CREATE TABLE IF NOT EXISTS pedidos ( ... );
+CREATE TABLE IF NOT EXISTS reservas ( ... );
+CREATE TABLE IF NOT EXISTS usuarios ( ... );
+
+INSERT INTO usuarios (id_usuario, user, pass)
+VALUES (1, 'admin', 'admin123')
+ON DUPLICATE KEY UPDATE user='admin';
+```
+
+---
+
+### `logo.jpg` and `plaza.png`
+
+Static image assets at the project root.
+
+- **`logo.jpg`** — The circular café logo displayed inside the `.logo-circular` header element (65 × 65 px, `border-radius: 50%`, white background border)
+- **`plaza.png`** — A reference image of a plaza, available as a local asset for use in location-related sections or future page layouts
+
+---
+
+## Feature Subdirectories
+
+### `menu/`
+
+Contains the full interactive menu experience linked from the homepage nav (`/movelo/menu/menu.php`). The module uses its own `estilosmenu.css` stylesheet to keep menu-specific overrides separate from the root `estilo.css`. The `cafe_expreso/` sub-folder holds assets for the espresso coffee sub-category.
+
+### `pedidos/`
+
+A complete order management CRUD module. `guardar_pedidos.php` receives POST data and inserts a row into the `pedidos` table via PDO. `editar_pedido.php` and `eliminar_pedido.php` handle UPDATE and DELETE operations. `administrar_clientes.php` provides an admin-side list view of all customers who have placed orders.
+
+### `reservas/`
+
+A table reservation CRUD module with the same pattern. `guardar_reserva.php` inserts into `reservas`; `ver_reservas.php` lists all upcoming reservations; `editar_reserva.php` and `eliminar_reserva.php` complete the CRUD cycle.
+
+### `Login/`
+
+Session-based authentication. `login.php` presents a login form, validates credentials against the `usuarios` table (PDO prepared statement), and sets session variables on success. `logout.php` calls `session_destroy()` and redirects back to the homepage.
+
+---
+
+## Referenced Files Not Yet in Root
+
+<Note>
+  The following files are referenced directly in the source code but are not present in the project root. They must be created or deployed alongside the main files for their features to work correctly.
+
+  - **`guardar_usuario.php`** — Called by the `fetch('guardar_usuario.php', { method: 'POST', ... })` in `buscador.js:saludar()`. This file should accept the `nombres`, `apellidos`, `edad`, and `genero` POST fields, insert a row using the `$conexion` PDO object, and echo `EXITO` on success.
+  - **`whatsapp_interactivo.js`** — Loaded via `<script src="whatsapp_interactivo.js"></script>` at the bottom of `index.php`, directly after `buscador.js`. It is intended to hold additional WhatsApp interaction logic beyond what is already in `buscador.js`.
+</Note>

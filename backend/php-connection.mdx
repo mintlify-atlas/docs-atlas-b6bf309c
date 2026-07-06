@@ -1,0 +1,152 @@
+---
+title: "PHP PDO Database Connection"
+sidebarTitle: "PHP Connection"
+description: "Sentidos Café uses PHP PDO to connect to MySQL. Learn how conexion.php works, how to configure credentials, and best practices for production security."
+---
+
+Every server-side PHP file in Sentidos Café that needs to read from or write to MySQL begins with a single `require_once` that pulls in `conexion.php`. This file creates a shared `$conexion` PDO instance configured for UTF-8 and exception-based error reporting. Understanding how it works — and how to harden it before going live — is the foundation of the entire backend.
+
+## The conexion.php File
+
+This is the complete, unmodified `conexion.php` as it ships with the project:
+
+```php
+<?php
+$host = "localhost";
+$db_name = "sentidos_cafe_db";
+$username = "root";
+$password = ""; // Si le pusiste contraseña en Workbench, escríbela aquí entre las comillas.
+
+try {
+    $conexion = new PDO("mysql:host=$host;dbname=$db_name;charset=utf8", $username, $password);
+    $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $error) {
+    die("Error de conexión: " . $error->getMessage());
+}
+?>
+```
+
+### Line-by-Line Explanation
+
+**Configuration variables** (`$host`, `$db_name`, `$username`, `$password`) — These four strings are assembled into the PDO Data Source Name (DSN). Keeping them as named variables at the top of the file makes credentials easy to locate and update without touching the connection logic.
+
+**DSN string** — `"mysql:host=$host;dbname=$db_name;charset=utf8"` tells PDO three things: use the MySQL driver, connect to the server at `$host`, and select the `$db_name` database. The `charset=utf8` segment is critical for a Cusco café — it ensures that Spanish characters like tildes (é, ó, ú) and the letter ñ round-trip correctly between PHP and the database without encoding corruption.
+
+**`PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION`** — By default PDO silently returns `false` on query failures. Setting the error mode to `ERRMODE_EXCEPTION` causes PDO to throw a `PDOException` instead, which means failed queries cannot be silently ignored. Every file that uses `$conexion` can wrap its queries in a `try/catch` block and handle failures explicitly.
+
+**`die()` on catch** — If the initial connection fails, execution stops immediately and the error message is printed. This is acceptable during local development but must be replaced before deploying to a public server (see [Production Security](#production-security-recommendations) below).
+
+## How index.php Includes It
+
+`index.php` — the homepage — loads the connection at the very top of the file before any HTML output:
+
+```php
+<?php
+// Incluimos la conexión al inicio del archivo
+require_once 'conexion.php';
+?>
+<!DOCTYPE html>
+...
+```
+
+`require_once` (rather than `include`) guarantees two things: the file must exist (a missing `conexion.php` halts execution with a fatal error rather than silently continuing), and it is loaded at most once per request even if multiple files try to include it.
+
+## Configuration Parameters
+
+<ParamField path="$host" type="string" default="localhost">
+  MySQL server hostname. Use `localhost` for a local XAMPP/WAMP stack. Change to an IP address or hostname when connecting to a remote MySQL server.
+</ParamField>
+
+<ParamField path="$db_name" type="string" default="sentidos_cafe_db">
+  The name of the MySQL database to select after connecting. Must match the database created by `script.sql`.
+</ParamField>
+
+<ParamField path="$username" type="string" default="root">
+  MySQL user account. The default XAMPP/WAMP root account has full privileges. For production, replace with a dedicated user that has only the permissions the application needs.
+</ParamField>
+
+<ParamField path="$password" type="string" default='""'>
+  Password for the MySQL user. Blank by default on local XAMPP installations. If you set a password in MySQL Workbench, enter it between the quotes here.
+</ParamField>
+
+## PDO vs. mysqli\_\*
+
+The pedidos and reservas admin files (`guardar_pedidos.php`, `guardar_reserva.php`, `login.php`) use the older `mysqli_*` procedural API. The main `conexion.php` uses PDO, which offers three important advantages:
+
+| Feature | PDO | mysqli\_\* |
+|---|---|---|
+| Prepared statements | Native, all drivers | MySQL only |
+| Database portability | Works with PostgreSQL, SQLite, etc. | MySQL-specific |
+| Error handling | `PDOException` throws | Manual `mysqli_error()` checks |
+| Named placeholders | `:nombre` syntax | Positional `?` only |
+
+New code added to the project should use the `$conexion` PDO instance and named placeholders (`:nombres`, `:apellidos`, etc.) rather than `mysqli_real_escape_string()` concatenation.
+
+## Production Security Recommendations
+
+<Warning>
+The `die("Error de conexión: " . $error->getMessage())` call prints the raw PHP exception — including the MySQL server address, database name, and sometimes the username — directly to the browser. **Never show PDOException messages to end users in production.** Log the error server-side and display a generic message instead.
+</Warning>
+
+<Steps>
+  <Step title="Move credentials to environment variables">
+    Hard-coded credentials in `conexion.php` will be committed to version control and exposed in any code review or repository leak. Use `getenv()` to read credentials from the server environment instead:
+
+    ```php
+    $password = getenv('DB_PASSWORD');
+    ```
+
+    On a cPanel shared host, set environment variables in the `.htaccess` file:
+
+    ```apache
+    SetEnv DB_PASSWORD "your_secret_password"
+    ```
+  </Step>
+  <Step title="Create a dedicated MySQL user">
+    The default `root` account has unrestricted privileges across all databases. Create a restricted user for the application:
+
+    ```sql
+    CREATE USER 'sentidos_app'@'localhost' IDENTIFIED BY 'strong_password';
+    GRANT SELECT, INSERT, UPDATE, DELETE ON sentidos_cafe_db.* TO 'sentidos_app'@'localhost';
+    FLUSH PRIVILEGES;
+    ```
+
+    This way, even if the credentials are compromised, the attacker cannot drop databases or access other schemas on the server.
+  </Step>
+  <Step title="Enable true prepared statements">
+    By default, PDO emulates prepared statements in PHP rather than sending them to MySQL. Set `PDO::ATTR_EMULATE_PREPARES` to `false` to use native MySQL prepared statements, which offer stronger protection against second-order SQL injection:
+
+    ```php
+    $conexion->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+    ```
+  </Step>
+</Steps>
+
+## Production-Safe Connection Setup
+
+This hardened version uses environment variables, suppresses error details from the browser, and enables native prepared statements. Replace the contents of `conexion.php` with this before going live:
+
+```php
+<?php
+$host     = getenv('DB_HOST') ?: 'localhost';
+$db_name  = getenv('DB_NAME') ?: 'sentidos_cafe_db';
+$username = getenv('DB_USER') ?: 'root';
+$password = getenv('DB_PASS') ?: '';
+
+try {
+    $conexion = new PDO(
+        "mysql:host=$host;dbname=$db_name;charset=utf8",
+        $username,
+        $password,
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+} catch (PDOException $e) {
+    error_log($e->getMessage());
+    http_response_code(500);
+    die("Error interno del servidor.");
+}
+```
+
+<Note>
+`error_log()` writes the full exception message to the server's PHP error log (usually `php_error.log` in your XAMPP `logs/` folder) where only administrators can read it. The browser receives only the generic `"Error interno del servidor."` string with a proper HTTP 500 status code.
+</Note>

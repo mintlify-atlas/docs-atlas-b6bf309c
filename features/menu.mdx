@@ -1,0 +1,181 @@
+---
+title: "Interactive Menu & Combo Gallery"
+sidebarTitle: "Menu"
+description: "The Sentidos Café menu showcases four signature combos in an animated accordion gallery with hover effects and direct WhatsApp ordering."
+---
+
+The menu section of Sentidos Café lives inside the `.seccion-experiencia-completa` container and presents four group combos as an interactive accordion gallery. Each card expands on hover, revealing the combo name, a short description, and a one-tap WhatsApp order button — no page navigation required.
+
+## Accordion Gallery Mechanics
+
+The gallery is built with CSS flexbox. All four `.tarjeta` cards sit in a single `.galeria-contenedor` row that is `380px` tall. At rest, every card holds an equal share of the row width via `flex: 1`. When a visitor hovers over a card it expands to `flex: 4`, pushing the other three cards aside. The hidden content fades up from the bottom at the same time.
+
+```css
+/* estilo.css — accordion core */
+.galeria-contenedor {
+    display: flex;
+    width: 100%;
+    height: 380px;
+    gap: 12px;
+}
+
+.tarjeta {
+    flex: 1;
+    transition: flex 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.tarjeta:hover {
+    flex: 4;
+}
+
+.tarjeta .contenido {
+    opacity: 0;
+    transform: translateY(15px);
+    transition: all 0.4s ease;
+}
+
+.tarjeta:hover .contenido {
+    opacity: 1;
+    transform: translateY(0);
+}
+```
+
+The `cubic-bezier(0.25, 1, 0.5, 1)` timing function gives the expansion a natural, springy feel — fast at first, then settling smoothly into position.
+
+## The Four Combos
+
+All four combos are defined as `.tarjeta` divs in `index.php`. Each card carries a `data-produto` attribute on its inner `.btn-wsp-pedido` button; JavaScript reads that attribute to build the WhatsApp order message at click time.
+
+<CardGroup cols={2}>
+  <Card title="Combo Dúo (2 Pers.)" icon="mug-hot">
+    **Includes:** Café Espresso + Salados
+
+    **`data-producto`:** `Combo Dúo (2 Personas)`
+
+    Ideal for couples or a quiet afternoon catch-up.
+  </Card>
+  <Card title="Mix Antojos (3-4 Pers.)" icon="ice-cream">
+    **Includes:** Bebidas Frías + Repostería
+
+    **`data-producto`:** `Mix Antojos (3-4 Personas)`
+
+    Cold drinks and pastries for a small group.
+  </Card>
+  <Card title="Súper Banquete (5 Pers.)" icon="utensils">
+    **Includes:** Salados + Cafés + Tés Premium
+
+    **`data-producto`:** `Súper Banquete (5 Personas)`
+
+    A full savoury and hot-drinks spread for five.
+  </Card>
+  <Card title="Mega Compartir (Hasta 7)" icon="gift">
+    **Includes:** Carta Completa + Chocolates + Regalos
+
+    **`data-producto`:** `Mega Compartir (Hasta 7 Personas)`
+
+    The flagship sharing experience — full menu plus gifts.
+  </Card>
+</CardGroup>
+
+### Combo HTML Structure
+
+Each combo follows this pattern in `index.php`:
+
+```html
+<div class="tarjeta"
+     style="background-image: url('https://images.unsplash.com/...');">
+    <div class="contenido">
+        <h3>Combo Dúo (2 Pers.)</h3>
+        <p style="font-size:0.75rem; color:#ddd; margin-bottom:5px;">
+            Café Espresso + Salados
+        </p>
+        <button class="btn-wsp-pedido" data-producto="Combo Dúo (2 Personas)">
+            <i class="fa-brands fa-whatsapp"></i> Pedir Combo
+        </button>
+    </div>
+</div>
+```
+
+## Background Image Swap on Hover
+
+`buscador.js` stores four alternative image URLs and swaps a card's `background-image` when the mouse enters. This gives each combo a second, food-focused visual on expansion.
+
+```js
+// buscador.js — image constants
+const fotoWaffles        = "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?q=80&w=600";
+const fotoHamburguesa    = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=600";
+const fotoQuequesCanasta = "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?q=80&w=600";
+const fotoJugosVariados  = "http://googleusercontent.com/image_collection/image_retrieval/6766577479720039937_0";
+
+// Mapping: data-producto value → hover image URL
+const fondosAlternativos = {
+    "Combo Dúo (2 Personas)":          fotoWaffles,
+    "Mix Antojos (3-4 Personas)":       fotoHamburguesa,
+    "Súper Banquete (5 Personas)":      fotoQuequesCanasta,
+    "Mega Compartir (Hasta 7 Personas)": fotoJugosVariados
+};
+```
+
+The swap logic runs for every `.tarjeta` inside `.seccion-experiencia-completa`:
+
+```js
+tarjetasCombo.forEach(function(tarjeta) {
+    const botonInterno = tarjeta.querySelector('.btn-wsp-pedido');
+    if (!botonInterno) return;
+
+    const nombreProducto      = botonInterno.getAttribute('data-producto');
+    const fotoOriginalTarjeta = tarjeta.style.backgroundImage;
+
+    tarjeta.addEventListener('mouseenter', function() {
+        if (fondosAlternativos[nombreProducto]) {
+            tarjeta.style.backgroundImage = `url('${fondosAlternativos[nombreProducto]}')`;
+        }
+    });
+
+    tarjeta.addEventListener('mouseleave', function() {
+        tarjeta.style.backgroundImage = fotoOriginalTarjeta;
+    });
+});
+```
+
+## Adding a New Combo
+
+<Steps>
+  <Step title="Copy a .tarjeta div in index.php">
+    Duplicate any existing `.tarjeta` block and place it inside `.galeria-contenedor`. Update the default `background-image` URL, the `<h3>` title, the `<p>` description, and the `data-producto` value on the button.
+
+    ```html
+    <div class="tarjeta"
+         style="background-image: url('https://your-image-url.jpg');">
+        <div class="contenido">
+            <h3>Nuevo Combo (X Pers.)</h3>
+            <p style="font-size:0.75rem; color:#ddd; margin-bottom:5px;">
+                Producto A + Producto B
+            </p>
+            <button class="btn-wsp-pedido" data-producto="Nuevo Combo (X Personas)">
+                <i class="fa-brands fa-whatsapp"></i> Pedir Combo
+            </button>
+        </div>
+    </div>
+    ```
+  </Step>
+  <Step title="Add the hover image to fondosAlternativos in buscador.js">
+    Declare a new image constant and add an entry to `fondosAlternativos`, using the exact same string you put in `data-producto`.
+
+    ```js
+    const fotoNuevoCombo = "https://your-hover-image-url.jpg";
+
+    const fondosAlternativos = {
+        // ... existing entries ...
+        "Nuevo Combo (X Personas)": fotoNuevoCombo
+    };
+    ```
+  </Step>
+  <Step title="Verify the gallery layout">
+    Open `index.php` in a browser and hover over the new card to confirm the expansion animation and background swap both work.
+  </Step>
+</Steps>
+
+<Tip>
+  The string in `data-producto` on the HTML button must match the key in `fondosAlternativos` **exactly** — including accented characters, parentheses, and spacing. A mismatch means the hover image swap will silently do nothing, because JavaScript looks up the key with strict equality.
+</Tip>
