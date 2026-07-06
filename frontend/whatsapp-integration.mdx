@@ -1,7 +1,7 @@
 ---
 title: "WhatsApp Integration: Buttons & Chat Widget"
 sidebarTitle: "WhatsApp Integration"
-description: "Sentidos Café integrates WhatsApp using the wa.me API link pattern. Configure the phone number, customize messages, and understand the floating chat widget."
+description: "Sentidos Café uses api.whatsapp.com/send deep-links for combo order buttons and a fixed floating chat widget. Set the phone number and message template."
 ---
 
 Sentidos Café connects customers directly to the café's WhatsApp line through two distinct touchpoints: inline order buttons embedded in each combo card and a persistent floating chat button fixed to the bottom-right corner of every page. Both are powered by the standard `api.whatsapp.com/send` deep-link pattern — no WhatsApp Business API account or third-party service is required.
@@ -25,16 +25,21 @@ This works with any standard WhatsApp number and requires only the recipient pho
 
 ## The Core `abrirWhatsapp` Function
 
-All WhatsApp buttons on the site call a single shared function defined inside the `DOMContentLoaded` block in `buscador.js`:
+All WhatsApp buttons on the site call a single shared function. Both the `numeroTelefono` constant and `abrirWhatsapp()` are defined inside the `DOMContentLoaded` callback in `buscador.js`, so they have access to each other through closure:
 
 ```js
-const numeroTelefono = "937604465"; // Sin el + ni el código de país
+document.addEventListener('DOMContentLoaded', function() {
 
-function abrirWhatsapp(producto) {
-    const mensaje = `Hola Sentidos Café Cusco, deseo solicitar más información o realizar un pedido del producto: ${producto}.`;
-    const url = `https://api.whatsapp.com/send?phone=${numeroTelefono}&text=${encodeURIComponent(mensaje)}`;
-    window.open(url, '_blank');
-}
+    const numeroTelefono = "937604465"; // Sin el + ni el código de país
+
+    function abrirWhatsapp(producto) {
+        const mensaje = `Hola Sentidos Café Cusco, deseo solicitar más información o realizar un pedido del producto: ${producto}.`;
+        const url = `https://api.whatsapp.com/send?phone=${numeroTelefono}&text=${encodeURIComponent(mensaje)}`;
+        window.open(url, '_blank');
+    }
+
+    // ... event listener wiring continues below ...
+});
 ```
 
 The product name is injected into the message template literal at runtime, so each combo automatically generates a unique, descriptive message. `encodeURIComponent` converts spaces and accented characters (like `Dúo` or `Súper`) into safe URL sequences before the link is opened.
@@ -105,7 +110,7 @@ A circular green button with the WhatsApp icon is fixed to the bottom-right corn
 **HTML (from `index.php`, placed just before `</body>`):**
 
 ```html
-<button id="btn-wsp-flotante" class="btn-wsp-flotante-principal" data-produto="Consulta General">
+<button id="btn-wsp-flotante" class="btn-wsp-flotante-principal" data-producto="Consulta General">
     <i class="fa-brands fa-whatsapp"></i>
 </button>
 ```
@@ -155,7 +160,7 @@ The springy `cubic-bezier` on the hover `transform` gives the button a bouncy, a
 The phone number is defined as a constant near the top of the `DOMContentLoaded` block in `buscador.js`:
 
 ```js
-// In buscador.js, inside the DOMContentLoaded callback (~line 43):
+// In buscador.js, inside the DOMContentLoaded callback (~line 71):
 const numeroTelefono = "937604465"; // Replace with your number (digits only, include country code)
 ```
 

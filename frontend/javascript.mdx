@@ -107,8 +107,13 @@ The `calcularYMostrar()` function implements a simple Peruvian income-tax retent
 
 ```js
 function calcularYMostrar() {
-    const nombre     = document.getElementById("nombre").value.trim();
+    const nombre      = document.getElementById("nombre").value.trim();
     const sueldoBruto = parseFloat(document.getElementById("sueldo").value);
+
+    if (!nombre || isNaN(sueldoBruto) || sueldoBruto <= 0) {
+        alert("Por favor, ingrese un nombre válido y un sueldo mayor a 0.");
+        return;
+    }
 
     let porcentaje = 0;
     if (sueldoBruto > 1500 && sueldoBruto <= 3000) porcentaje = 8;
@@ -118,8 +123,12 @@ function calcularYMostrar() {
     const sueldoNeto    = sueldoBruto - montoImpuesto;
     const estado        = porcentaje > 0 ? "Sujeto a Retención" : "Exonerado";
 
-    document.getElementById("outSueldo").textContent    = `S/ ${sueldoBruto.toFixed(2)}`;
-    document.getElementById("outSueldoNeto").textContent = `S/ ${sueldoNeto.toFixed(2)}`;
+    document.getElementById("outNombre").textContent        = nombre;
+    document.getElementById("outSueldo").textContent        = `S/ ${sueldoBruto.toFixed(2)}`;
+    document.getElementById("outPorcentaje").textContent    = `${porcentaje}%`;
+    document.getElementById("outMontoImpuesto").textContent = `S/ ${montoImpuesto.toFixed(2)}`;
+    document.getElementById("outSueldoNeto").textContent    = `S/ ${sueldoNeto.toFixed(2)}`;
+    document.getElementById("outEstado").textContent        = estado;
 
     document.getElementById("tablaResultados").style.display = "table";
 }

@@ -1,7 +1,7 @@
 ---
 title: "CSS Styling System & Brand Theme"
 sidebarTitle: "Styling"
-description: "Sentidos Café uses a warm orange-and-brown brand palette in pure CSS. This page covers layout containers, the navigation bar, card components, and responsive breakpoints."
+description: "Sentidos Café CSS: orange-and-brown palette, layout containers, accordion cards, WhatsApp buttons, social hover colors, and 768px responsive breakpoint."
 ---
 
 Sentidos Café's visual identity is defined entirely in `estilo.css` — a single, self-contained stylesheet that applies a warm café aesthetic through a rich orange-and-brown palette, rounded white cards, and a dark outer shell. No CSS framework is used; every rule is handcrafted to match the brand.
@@ -15,8 +15,9 @@ The four core colors appear repeatedly across `estilo.css` and establish an inst
 | Primary orange | `#f7941d` | `.caja-estilo` (header & nav), CTA headings, section heading accents |
 | Dark brown | `#3e2723` | Contact section background, logo border, nav hover color, footer text |
 | Warm amber | `#c67a25` | Section headings (`.titulo-mapa`, `.bloque-llamado-accion h2`), map title |
-| Off-white | `#d9e1e8` | `.contenedor-principal` background (the main page card) |
+| Container bg | `#d9e1e8` | `.contenedor-principal` background (the main page card) |
 | Dark outer | `#0b0b0b` | `body` background — creates the dark frame around the page |
+| WhatsApp green | `#25D366` | `.btn-wsp-pedido` and `.btn-wsp-flotante-principal` backgrounds |
 
 To make future rebranding easier, consider consolidating these values into CSS custom properties at the top of `estilo.css`:
 
@@ -150,10 +151,12 @@ Green buttons rendered inside each combo card, matching WhatsApp's brand color:
     font-weight: bold;
     border-radius: 8px;
     cursor: pointer;
+    margin-top: 10px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     transition: background-color 0.3s, transform 0.2s;
+    width: fit-content;
 }
 .btn-wsp-pedido:hover {
     background-color: #128C7E;
@@ -270,6 +273,39 @@ The `.caja-mapa` class uses `overflow: hidden` in combination with `border-radiu
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 ```
+
+## Social Icon Hover Colors
+
+The contact section renders social network icons as circular links (`.icono-red`). Each icon carries a modifier class that gives it a platform-specific hover color when the user mouses over it. The base state uses a translucent white background (`rgba(255, 255, 255, 0.1)`) so they blend into the dark brown contact box:
+
+```css
+/* Facebook — official brand blue */
+.icono-red.facebook:hover {
+    background-color: #1877F2;
+    transform: translateY(-5px);
+}
+
+/* Instagram — diagonal gradient from warm orange to deep pink */
+.icono-red.instagram:hover {
+    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+    transform: translateY(-5px);
+}
+
+/* TikTok — pure black fill with a dual-color glitch box-shadow effect */
+.icono-red.tiktok:hover {
+    background-color: #000000;
+    box-shadow: 2px 2px 0px #00f2fe, -2px -2px 0px #fe0979;
+    transform: translateY(-5px);
+}
+
+/* WhatsApp nav icon — brand green */
+.icono-red.whatsapp-nav:hover {
+    background-color: #25D366;
+    transform: translateY(-5px);
+}
+```
+
+All four hover states apply `translateY(-5px)` to lift the icon slightly upward, reinforcing interactivity. The TikTok effect replicates the platform's signature cyan/red chromatic-aberration look using two offset `box-shadow` values instead of a background image.
 
 ## Changing Brand Colors
 

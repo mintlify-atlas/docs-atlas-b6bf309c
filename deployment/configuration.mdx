@@ -40,10 +40,12 @@ Work through every item below before launching:
 - [ ] Set a strong `$password` (minimum 16 characters, mixed case + symbols)
 - [ ] Update the default admin password in the `usuarios` table (replace `admin123`)
 - [ ] Replace placeholder social media URLs in `index.php` (`TU_PAGINA`, `TU_PERFIL`, `TU_USUARIO`)
-- [ ] Update the phone number in `buscador.js` (`const numeroTelefono`) to the real business WhatsApp number
+- [ ] Update the phone number in `buscador.js` (`const numeroTelefono = "937604465"`) to the real business WhatsApp number (digits only, include country code — e.g. `51937604465`)
 - [ ] Replace the placeholder contact info in `index.php` (`informes@sentidoscafe.com`, `+51 984 XXXXXX`)
 - [ ] Update the hardcoded business number in `pedidos/guardar_pedidos.php` (`$numero_comercio = "51987654321"`) to the real WhatsApp number
 - [ ] Verify or update the `/movelo/menu/menu.php` path in `index.php` navigation links if the menu lives at a different URL on your host
+- [ ] Create `guardar_usuario.php` (AJAX endpoint called by `buscador.js` for the visitor registration form) — this file is referenced in the front-end but is **not included in the repository** and must be created before the registration form works
+- [ ] Create or obtain `whatsapp_interactivo.js` (floating WhatsApp button logic) — this script is loaded in `index.php` but is **not included in the repository** and must be provided separately
 
 ## Environment Variables (Recommended for Production)
 

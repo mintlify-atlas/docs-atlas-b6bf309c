@@ -1,7 +1,7 @@
 ---
-title: "Table Reservation System"
+title: "Sentidos Café MySQL Table Reservation System Setup"
 sidebarTitle: "Reservations"
-description: "Sentidos Café stores table reservations in MySQL with guest name, phone, date, time, party size, and preferred seating zone."
+description: "Sentidos Café stores table reservations in MySQL with guest name, phone, date, time, party size, and preferred seating zone per booking."
 ---
 
 Sentidos Café manages table bookings through a PHP/MySQL backend. Staff access a password-protected admin panel (`reservas/ver_reservas.php`) that lists every upcoming reservation and allows editing or deletion. New bookings are created through `reservas/guardar_reserva.php`, which validates the POST data with `mysqli_real_escape_string` before writing to the `sentidos_cafe_db` database.
@@ -19,12 +19,17 @@ The database connection is shared across the project via `conexion.php`, which u
 
 ```php
 // conexion.php
-$conexion = new PDO(
-    "mysql:host=localhost;dbname=sentidos_cafe_db;charset=utf8",
-    "root",
-    ""
-);
-$conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$host     = "localhost";
+$db_name  = "sentidos_cafe_db";
+$username = "root";
+$password = "";
+
+try {
+    $conexion = new PDO("mysql:host=$host;dbname=$db_name;charset=utf8", $username, $password);
+    $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $error) {
+    die("Error de conexión: " . $error->getMessage());
+}
 ```
 
 ## The `reservas` Table
@@ -110,12 +115,16 @@ The admin booking form (`reservas/guardar_reserva.php`) submits via `POST` and r
 
 ```sql
 INSERT INTO reservas
-    (nombres, apellidos, telefono, fecha_reserva, hora_reserva, cantidad_personas, zona_preferida)
+    (nombres, apellidos, telefono, fecha_reserva, hora, personas, zona)
 VALUES
     ('María', 'González', '+51 987 654 321', '2026-02-14', '19:00:00', 2, 'Terraza / Aire Libre');
 ```
 
 `fecha_registro` is omitted because it has a `DEFAULT CURRENT_TIMESTAMP` and MySQL fills it in automatically.
+
+<Warning>
+  The PHP form in `guardar_reserva.php` uses the shorter field aliases `hora`, `personas`, and `zona` in the INSERT statement — these differ from the full column names `hora_reserva`, `cantidad_personas`, and `zona_preferida` defined in the `script.sql` schema. This is a known discrepancy in the source: the INSERT will fail at runtime against the canonical schema. If you recreate the database from `script.sql`, update the INSERT in `guardar_reserva.php` to use the full column names.
+</Warning>
 
 ### Full Admin Workflow
 

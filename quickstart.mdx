@@ -1,7 +1,7 @@
 ---
-title: "Get Started with Sentidos Café Locally"
+title: "How to Set Up Sentidos Café Locally with XAMPP or WAMP"
 sidebarTitle: "Quickstart"
-description: "Set up and run the Sentidos Café PHP website on your local machine using XAMPP or WAMP in under 10 minutes."
+description: "Set up and run the Sentidos Café PHP/MySQL website on your local machine using XAMPP or WAMP in under ten minutes — no build tools required."
 ---
 
 Sentidos Café runs on a standard PHP + Apache + MySQL stack, which means you can have a fully working local copy running in under ten minutes using XAMPP or WAMP. No Composer dependencies, no build steps — just copy the files, import the schema, and open your browser.
@@ -142,7 +142,7 @@ Then reload the page to see the exact error message. You can also check the Apac
 
 **WhatsApp buttons open but send to the wrong number**
 
-The WhatsApp phone number is hardcoded in `buscador.js` as `937604465` (Peru). If you are testing with a different number, find the `numeroTelefono` constant near the top of `buscador.js` and update it:
+The WhatsApp phone number is hardcoded in `buscador.js` as `937604465` (Peru). If you are testing with a different number, find the `numeroTelefono` constant inside the `DOMContentLoaded` callback (Section 2 — WhatsApp logic) and update it:
 
 ```js
 const numeroTelefono = "937604465"; // Replace with your number (no + or spaces)

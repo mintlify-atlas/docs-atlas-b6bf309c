@@ -1,7 +1,7 @@
 ---
 title: "AJAX User Registration with PHP and MySQL"
 sidebarTitle: "User Registration"
-description: "The Sentidos Café registration form collects visitor details via AJAX, POSTs to guardar_usuario.php, and saves records to the MySQL usuarios table."
+description: "The Sentidos Café registration form collects visitor details via AJAX, POSTs to guardar_usuario.php, and saves the record to the MySQL database."
 ---
 
 The Sentidos Café homepage includes a visitor registration form that lets guests sign in without a full page reload. When a user submits their details, the `saludar()` function in `buscador.js` takes over: it validates the inputs in the browser, packages the data into a `FormData` object, and sends it to `guardar_usuario.php` via the Fetch API. The server processes the insert and echoes back the plain string `EXITO` on success, which the JavaScript uses to swap the form area for a confirmation message — all without interrupting the browsing experience.
@@ -85,6 +85,22 @@ function saludar() {
 <Warning>
 Using PDO named placeholders (`:nombres`, `:apellidos`, etc.) is **required** here. Never concatenate `$_POST` values directly into a SQL string — that is the exact pattern that makes an application vulnerable to SQL injection. The prepared statement approach shown below ensures user input is always treated as data, never as executable SQL.
 </Warning>
+
+<Note>
+The default `script.sql` schema only defines three tables: `pedidos`, `reservas`, and `usuarios`. There is **no `visitantes` table** in the shipped schema. The example below targets a `visitantes` table that stores the four form fields (`nombres`, `apellidos`, `edad`, `genero`) plus an automatic timestamp. Before running this endpoint you must add the table to your database — either by running the `CREATE TABLE` statement shown below, or by adapting the `INSERT` to target a table that already exists in your schema.
+
+```sql
+-- Run this once in phpMyAdmin (SQL tab) or via the CLI before using guardar_usuario.php
+CREATE TABLE IF NOT EXISTS visitantes (
+    id_visitante   INT AUTO_INCREMENT PRIMARY KEY,
+    nombres        VARCHAR(100) NOT NULL,
+    apellidos      VARCHAR(100) NOT NULL,
+    edad           INT NOT NULL,
+    genero         VARCHAR(50)  NOT NULL DEFAULT 'No especificado',
+    fecha_registro DATETIME     DEFAULT CURRENT_TIMESTAMP
+);
+```
+</Note>
 
 ```php
 <?php

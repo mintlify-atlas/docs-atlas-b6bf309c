@@ -1,5 +1,5 @@
 ---
-title: "WhatsApp Ordering: How Customers Place Orders"
+title: "How WhatsApp Ordering Works at Sentidos Café Cusco"
 sidebarTitle: "Ordering"
 description: "Sentidos Café uses WhatsApp API links to let customers place orders instantly — no app installation needed, with pre-filled order messages."
 ---
@@ -116,9 +116,7 @@ The button's CSS positions it with `position: fixed; bottom: 25px; right: 25px;`
     Edit the template string inside `abrirWhatsapp()`:
 
     ```js
-    const mensaje = `Hola Sentidos Café Cusco,
-deseo solicitar más información o
-realizar un pedido del producto: ${producto}.`;
+    const mensaje = `Hola Sentidos Café Cusco, deseo solicitar más información o realizar un pedido del producto: ${producto}.`;
     ```
 
     The `${producto}` placeholder is replaced at runtime with the value from `data-producto`. Keep `encodeURIComponent(mensaje)` in the URL construction.
